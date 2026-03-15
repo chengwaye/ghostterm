@@ -18,6 +18,9 @@
   <!-- socket.io -->
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.0/dist/socket.io.min.js"></script>
 
+  <!-- html2canvas for screenshot -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
 <style>
   :root {
     --bg: #0f0f1a;
@@ -59,11 +62,41 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 4px 8px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    min-height: 44px;
+    min-height: 64px;
+  }
+
+  /* Ghost cells */
+  .ghost-cells {
+    display: flex;
+    gap: 3px;
+    flex: 1;
+  }
+  .ghost-cell {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .ghost-cell.active { border-color: var(--primary); }
+  .ghost-cell.empty {
+    border-style: dashed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 20px;
+  }
+  .ghost-cell canvas {
+    width: 100%;
+    height: 100%;
   }
 
   .logo {
@@ -187,7 +220,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 4px;
     margin-bottom: 8px;
     position: relative;
   }
@@ -240,10 +273,12 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    width: 56px;
+    flex-shrink: 0;
   }
 
   .side-btn {
-    width: 64px;
+    width: 100%;
     height: 44px;
     border: 1px solid var(--border);
     border-radius: var(--btn-radius);
@@ -518,13 +553,13 @@
 <body>
 <div id="app">
   <header>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span class="logo">Claude Remote</span>
-      <span class="status">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">Connecting...</span>
-      </span>
+    <div class="ghost-cells">
+      <div class="ghost-cell active" id="gcell-0" onclick="ghostCellClick(0)"><canvas id="gc-0"></canvas></div>
+      <div class="ghost-cell empty" id="gcell-1" onclick="ghostCellClick(1)">+</div>
+      <div class="ghost-cell empty" id="gcell-2" onclick="ghostCellClick(2)">+</div>
+      <div class="ghost-cell empty" id="gcell-3" onclick="ghostCellClick(3)">+</div>
     </div>
+    <span class="status-dot" id="statusDot" style="margin-right:4px"></span>
     <div class="header-btns">
       <button class="header-btn" id="viewToggleBtn" onclick="toggleView()" title="Switch view" style="font-size:13px">🎮</button>
       <button class="header-btn" onclick="toggleFontOverlay()" title="Font size">A</button>
@@ -545,7 +580,7 @@
     <canvas id="office-canvas"></canvas>
   </div>
 
-  <div id="controls" style="padding-bottom:54px">
+  <div id="controls">
     <!-- Quick Actions -->
     <div class="quick-row">
       <button class="qbtn green" onclick="send('y\r')">y</button>
@@ -553,7 +588,7 @@
       <button class="qbtn" onclick="send('\x1b[Z')">S+Tab</button>
       <button class="qbtn" onclick="send('/')">/ cmd</button>
       <button class="qbtn" onclick="send('\t')">Tab</button>
-      <button class="qbtn" onclick="send('\n')">換行</button>
+      <button class="qbtn" onclick="send('\x7f')">Bksp</button>
     </div>
 
     <!-- D-Pad + Side Buttons -->
@@ -561,7 +596,12 @@
       <div class="side-btns">
         <button class="side-btn" onclick="showClaudeMenu()">claude</button>
         <button class="side-btn red" onclick="send('\x03')">^C</button>
-        <button class="side-btn" onclick="send('\x1b')">Esc</button>
+        <button class="side-btn amber" onclick="closeCurrentSession()">Close</button>
+      </div>
+      <div class="side-btns">
+        <button class="side-btn" id="cameraBtn" onclick="takeScreenshot()" style="border-style:dashed">📷 Shot</button>
+        <button class="side-btn" id="fileBtn" onclick="pickFile('file')" style="border-style:dashed">📁 File</button>
+        <button class="side-btn" id="pastePathBtn" onclick="pasteLastPath()" style="border-style:dashed;display:none">📋 <span id="lastPathLabel">Paste</span></button>
       </div>
       <div class="dpad">
         <button class="dpad-btn up" onclick="send('\x1b[A')">↑</button>
@@ -571,29 +611,17 @@
         <button class="dpad-btn down" onclick="send('\x1b[B')">↓</button>
       </div>
       <div class="side-btns">
+        <button class="side-btn" onclick="send('\n')">換行</button>
         <button class="side-btn" onclick="send(' ')">Space</button>
-        <button class="side-btn" onclick="send('\x7f')">Bksp</button>
         <button class="side-btn" id="copySelBtn" onclick="copySelection()">Copy</button>
       </div>
-      <div style="position:absolute;right:4px;top:50%;transform:translateY(-40%);display:flex;flex-direction:column;gap:4px">
-        <button class="side-btn" onclick="autoScroll=true;term.scrollToBottom();vibrate()" style="width:28px;height:30px;font-size:9px;min-width:0;color:var(--success)">⏬</button>
-        <button class="side-btn" onclick="autoScroll=false;term.scrollLines(-5);vibrate()" style="width:28px;height:36px;font-size:13px;min-width:0">▲</button>
-        <button class="side-btn" onclick="term.scrollLines(5);vibrate()" style="width:28px;height:36px;font-size:13px;min-width:0">▼</button>
+      <div class="side-btns">
+        <button class="side-btn" onclick="autoScroll=true;smartScroll();vibrate()" style="font-size:10px;color:var(--success)">⏬</button>
+        <button class="side-btn" onclick="autoScroll=false;term.scrollLines(-5);vibrate()" style="font-size:15px">▲</button>
+        <button class="side-btn" onclick="term.scrollLines(5);vibrate()" style="font-size:15px">▼</button>
       </div>
     </div>
 
-    <!-- Upload -->
-    <div class="upload-row">
-      <button class="upload-btn" id="cameraBtn" onclick="pickFile('camera')">
-        <span>📷</span> Camera
-      </button>
-      <button class="upload-btn" id="fileBtn" onclick="pickFile('file')">
-        <span>📁</span> File
-      </button>
-      <button class="upload-btn" id="pastePathBtn" onclick="pasteLastPath()" style="display:none">
-        <span>📋</span> <span id="lastPathLabel">Paste Path</span>
-      </button>
-    </div>
   </div>
 </div>
 
@@ -631,6 +659,7 @@
 <!-- Claude Menu -->
 <div class="backdrop visible" id="claudeBackdrop" onclick="hideClaudeMenu()" style="display:none"></div>
 <div class="claude-menu" id="claudeMenu">
+  <button class="claude-menu-btn" id="dangerToggle" onclick="toggleDangerous()" style="border-color:var(--danger);color:var(--danger)">--dangerous: ON</button>
   <button class="claude-menu-btn" onclick="claudeRun('')">New Session</button>
   <button class="claude-menu-btn" onclick="claudeRun('--resume')">Resume <span class="desc">繼續上次對話</span></button>
   <button class="claude-menu-btn" onclick="claudeRun('--continue')">Continue <span class="desc">帶入上次結果</span></button>
@@ -697,7 +726,7 @@ function safeFit() {
   try {
     fitAddon.fit();
     socket.emit('resize', { cols: term.cols, rows: term.rows });
-    term.scrollToBottom();
+    smartScroll();
   } catch {}
 }
 
@@ -729,7 +758,7 @@ function setSeq(id, seq) { bufferSeqs[id || currentSessionId] = seq; }
 
 socket.on('connect', () => {
   document.getElementById('statusDot').classList.add('connected');
-  document.getElementById('statusText').textContent = 'Syncing...';
+  // statusText removed — ghost cells show status now
   // Server sends 'sessions' + 'attached' → then we sync
   if (hasConnectedOnce) {
     socket.emit('resize', { cols: term.cols, rows: term.rows });
@@ -739,13 +768,13 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
   document.getElementById('statusDot').classList.remove('connected');
-  document.getElementById('statusText').textContent = 'Reconnecting...';
+  // ghost cells show connection status
 });
 
 // Server tells us which session we're attached to
 socket.on('attached', (id) => {
   currentSessionId = id;
-  document.getElementById('statusText').textContent = `T${id} Syncing...`;
+  // ghost cells show which session is active
   socket.emit('sync', getSeq(id), id);
 });
 
@@ -766,7 +795,7 @@ socket.on('output', (data, seq, id) => {
   if (id !== undefined) setSeq(id, seq);
   // Only write to terminal if it's from the current session
   if (id === currentSessionId || id === undefined) {
-    term.write(data, () => { if (autoScroll) term.scrollToBottom(); });
+    term.write(data, () => { if (autoScroll) smartScroll(); });
   }
   // Feed office mini-terminal for the correct session
   if (typeof updateOfficeOutput === 'function') {
@@ -779,9 +808,9 @@ socket.on('delta', (data, seq, id) => {
   const sessId = id || currentSessionId;
   setSeq(sessId, seq);
   if (sessId === currentSessionId && data) {
-    term.write(data, () => { if (autoScroll) term.scrollToBottom(); });
+    term.write(data, () => { if (autoScroll) smartScroll(); });
   }
-  document.getElementById('statusText').textContent = `T${currentSessionId} Connected`;
+  updateGhostCells();
 });
 
 // Full history
@@ -790,9 +819,13 @@ socket.on('history', (data, seq, id) => {
   setSeq(sessId, seq);
   if (sessId === currentSessionId) {
     term.reset();
-    term.write(data, () => term.scrollToBottom());
+    term.write(data, () => {
+      term.scrollToBottom();
+      setTimeout(() => term.scrollToBottom(), 100);
+      setTimeout(() => term.scrollToBottom(), 300);
+    });
   }
-  document.getElementById('statusText').textContent = `T${currentSessionId} Connected`;
+  updateGhostCells();
 });
 
 socket.on('exit', (code, id) => {
@@ -810,8 +843,16 @@ socket.on('auth_error', (msg) => {
 });
 
 // Switch to a different terminal session
+let pendingViewSwitch = false;
 function switchSession(id) {
   if (id === currentSessionId) return;
+  pendingViewSwitch = true;
+  // First switch to terminal view so xterm is visible when data arrives
+  if (officeActive) {
+    toggleView();
+  }
+  // Force server to resend full history by resetting seq
+  bufferSeqs[id] = 0;
   socket.emit('attach', id);
   // Reset terminal for new session
   term.reset();
@@ -820,12 +861,31 @@ function switchSession(id) {
 
 // Create new terminal session
 function createNewSession() {
+  term.reset(); // Clear old content immediately
   socket.emit('create-session');
 }
 
 // Close a terminal session
 function closeSession(id) {
   socket.emit('close-session', id);
+}
+
+// Close current session and switch to another
+function closeCurrentSession() {
+  if (!currentSessionId) return;
+  vibrate();
+  const currentIdx = sessionList.findIndex(s => s.id === currentSessionId);
+  // Find another session to switch to
+  const other = sessionList.find(s => s.id !== currentSessionId && !s.exited);
+  if (other) {
+    // Switch to another session first, then close
+    bufferSeqs[other.id] = 0;
+    socket.emit('attach', other.id);
+    term.reset();
+    autoScroll = true;
+  }
+  closeSession(currentSessionId);
+  showToast('Terminal closed');
 }
 
 // Reconnect on iOS foreground
@@ -855,7 +915,7 @@ document.getElementById('controls').addEventListener('touchstart', (e) => {
   if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
     const btn = e.target.closest('button') || e.target;
     // Upload buttons need native gesture chain for file picker on iOS
-    if (btn.classList.contains('upload-btn')) return;
+    if (btn.id === 'fileBtn' || btn.id === 'cameraBtn') return;
     e.preventDefault();
     btn.click();
   }
@@ -873,13 +933,55 @@ function hideClaudeMenu() {
   document.getElementById('claudeBackdrop').style.display = 'none';
 }
 
+let dangerousMode = localStorage.getItem('dangerousMode') !== 'false'; // default ON
+updateDangerBtn();
+
+function toggleDangerous() {
+  dangerousMode = !dangerousMode;
+  localStorage.setItem('dangerousMode', dangerousMode);
+  updateDangerBtn();
+  vibrate();
+}
+
+function updateDangerBtn() {
+  const btn = document.getElementById('dangerToggle');
+  if (dangerousMode) {
+    btn.textContent = '--dangerously-skip-permissions: ON';
+    btn.style.borderColor = 'var(--danger)';
+    btn.style.color = 'var(--danger)';
+  } else {
+    btn.textContent = '--dangerously-skip-permissions: OFF';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text-dim)';
+  }
+}
+
 function claudeRun(flag) {
   hideClaudeMenu();
-  const cmd = flag
-    ? `claude --dangerously-skip-permissions ${flag}\r`
-    : 'claude --dangerously-skip-permissions\r';
+  let cmd = 'claude';
+  if (dangerousMode) cmd += ' --dangerously-skip-permissions';
+  if (flag) cmd += ' ' + flag;
+  cmd += '\r';
   socket.emit('input', cmd);
   vibrate();
+}
+
+// ==================== Smart Scroll ====================
+function smartScroll() {
+  const buffer = term.buffer.active;
+  const totalLines = buffer.baseY + term.rows;
+  // Find last non-empty line
+  let lastContentLine = 0;
+  for (let i = totalLines - 1; i >= 0; i--) {
+    const line = buffer.getLine(i);
+    if (line && line.translateToString(true).trim().length > 0) {
+      lastContentLine = i;
+      break;
+    }
+  }
+  // Scroll so lastContentLine is at bottom of viewport
+  const target = Math.max(0, lastContentLine - term.rows + 2);
+  term.scrollToLine(target);
 }
 
 // ==================== Controls ====================
@@ -932,6 +1034,43 @@ function pickFile(mode) {
     input.removeAttribute('capture');
   }
   input.click();
+}
+
+// ==================== Screenshot ====================
+async function takeScreenshot() {
+  const btn = document.getElementById('cameraBtn');
+  btn.classList.add('uploading');
+  try {
+    const target = document.getElementById('app');
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#0f0f1a',
+      scale: window.devicePixelRatio || 2,
+      useCORS: true,
+    });
+    canvas.toBlob(async (blob) => {
+      if (!blob) { showToast('Screenshot failed'); btn.classList.remove('uploading'); return; }
+      const formData = new FormData();
+      formData.append('file', blob, `screenshot-${Date.now()}.png`);
+      try {
+        const res = await fetch('/upload' + (ACCESS_CODE ? '?code=' + ACCESS_CODE : ''), {
+          method: 'POST', body: formData,
+        });
+        if (!res.ok) throw new Error('Upload failed: ' + res.status);
+        const data = await res.json();
+        lastUploadedPath = data.path;
+        localStorage.setItem('lastPath', lastUploadedPath);
+        document.getElementById('pastePathBtn').style.display = 'flex';
+        document.getElementById('lastPathLabel').textContent = 'Screenshot';
+        showToast('Screenshot: ' + data.path);
+      } catch (err) {
+        showToast('Error: ' + err.message);
+      }
+      btn.classList.remove('uploading');
+    }, 'image/png');
+  } catch (err) {
+    showToast('Screenshot error: ' + err.message);
+    btn.classList.remove('uploading');
+  }
 }
 
 document.getElementById('file-input').addEventListener('change', async (e) => {
@@ -1091,10 +1230,11 @@ const controls = document.getElementById('controls');
 
 let keyboardOpen = false;
 
-// Lock app height on load so iOS can never resize it
+// Lock app height on load — subtract input-bar height so terminal doesn't extend behind it
+const inputBarH = document.getElementById('input-bar').offsetHeight;
 const lockedHeight = window.innerHeight;
-document.getElementById('app').style.height = lockedHeight + 'px';
-document.getElementById('app').style.maxHeight = lockedHeight + 'px';
+document.getElementById('app').style.height = (lockedHeight - inputBarH) + 'px';
+document.getElementById('app').style.maxHeight = (lockedHeight - inputBarH) + 'px';
 document.getElementById('app').style.overflow = 'hidden';
 
 // xterm textarea — prevent focus (terminal is view-only on mobile)
@@ -1189,15 +1329,242 @@ hiddenInput.addEventListener('keydown', (e) => {
   }
 });
 
+// Terminal states — shared by ghost cells and office view
+const termStates = { 1: 'idle', 2: 'idle', 3: 'idle', 4: 'idle' };
+
+// ==================== Ghost Header Cells ====================
+const GHOST_COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+const gcCanvases = [null, null, null, null];
+const gcCtxs = [null, null, null, null];
+let gcAnimId = null;
+let gcFrame = 0;
+
+function initGhostCanvas(i) {
+  const cell = document.getElementById('gcell-' + i);
+  if (!cell) return;
+  cell.classList.remove('empty');
+  cell.innerHTML = '<canvas id="gc-' + i + '"></canvas>';
+  const canvas = document.getElementById('gc-' + i);
+  const dpr = window.devicePixelRatio || 2;
+  const rect = cell.getBoundingClientRect();
+  // Account for border (2px each side)
+  const cw = Math.round(rect.width - 4);
+  const ch = Math.round(rect.height - 4);
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
+  canvas.style.width = cw + 'px';
+  canvas.style.height = ch + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  gcCanvases[i] = canvas;
+  gcCtxs[i] = ctx;
+  // Store logical size for drawing
+  canvas._logicW = cw;
+  canvas._logicH = ch;
+}
+
+// Init first cell (always has session 1)
+initGhostCanvas(0);
+
+function drawGhostCell(idx) {
+  const ctx = gcCtxs[idx];
+  if (!ctx || !gcCanvases[idx]) return;
+  const w = gcCanvases[idx]._logicW || 52;
+  const h = gcCanvases[idx]._logicH || 52;
+  const state = termStates[idx + 1] || 'idle';
+  const color = GHOST_COLORS[idx];
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = '#0f0f1a';
+  ctx.fillRect(0, 0, w, h);
+
+  // === Pumpkin sofa (top-center) ===
+  const sofaY = 11;
+  ctx.fillStyle = '#c2410c';
+  ctx.beginPath(); ctx.ellipse(w / 2, sofaY, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#9a3412'; ctx.lineWidth = 0.7;
+  ctx.beginPath(); ctx.moveTo(w / 2, sofaY - 6); ctx.lineTo(w / 2, sofaY + 6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w / 2 - 6, sofaY - 5); ctx.quadraticCurveTo(w / 2 - 6, sofaY, w / 2 - 6, sofaY + 5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w / 2 + 6, sofaY - 5); ctx.quadraticCurveTo(w / 2 + 6, sofaY, w / 2 + 6, sofaY + 5); ctx.stroke();
+  ctx.fillStyle = '#65a30d';
+  ctx.fillRect(w / 2 - 1, sofaY - 8, 2, 3);
+  ctx.beginPath(); ctx.ellipse(w / 2 + 2, sofaY - 7, 2.5, 1.2, 0.3, 0, Math.PI * 2); ctx.fill();
+
+  // === Desk + Monitor (bottom-right) ===
+  const deskX = 30, deskY = 42;
+  ctx.fillStyle = '#7a5230'; ctx.fillRect(deskX, deskY, 18, 3);
+  ctx.fillStyle = '#5c3d1e'; ctx.fillRect(deskX, deskY + 3, 18, 4);
+  ctx.fillRect(deskX + 2, deskY + 3, 2, 6);
+  ctx.fillRect(deskX + 14, deskY + 3, 2, 6);
+  // Monitor
+  ctx.fillStyle = '#334155'; ctx.fillRect(deskX + 3, deskY - 8, 12, 8);
+  ctx.fillStyle = state === 'busy' ? '#10b981' : (state === 'error' ? '#ef4444' : '#0a0a15');
+  ctx.fillRect(deskX + 4, deskY - 7, 10, 6);
+  ctx.fillStyle = '#475569'; ctx.fillRect(deskX + 8, deskY, 2, 2);
+  if (state === 'busy' && Math.sin(gcFrame * 0.15) > 0) {
+    ctx.fillStyle = '#10b981'; ctx.fillRect(deskX + 5, deskY - 4, 3, 1);
+  }
+
+  // === Ghost ===
+  let ghostX, ghostY;
+  const floatOffset = Math.sin(gcFrame * 0.06 + idx) * 1.5;
+  const isWorking = state === 'busy' || state === 'error' || state === 'waiting';
+
+  if (state === 'busy') {
+    ghostX = 14; ghostY = 36 + floatOffset; // Bottom-left, at desk
+  } else if (state === 'waiting') {
+    ghostX = 18; ghostY = 28 + floatOffset; // Middle area
+  } else if (state === 'error') {
+    ghostX = 14; ghostY = 34 + Math.sin(gcFrame * 0.2) * 2; // Bottom-left, shaking
+  } else {
+    ghostX = w / 2; ghostY = 12 + floatOffset; // On sofa (top-center)
+  }
+
+  // Ghost glow when busy
+  if (state === 'busy') {
+    ctx.globalAlpha = 0.12 + Math.sin(gcFrame * 0.1) * 0.08;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(ghostX, ghostY, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Ghost body
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(ghostX, ghostY - 2, 8, Math.PI, 0);
+  ctx.lineTo(ghostX + 8, ghostY + 6);
+  const wp = gcFrame * 0.1 + idx;
+  for (let i = 0; i < 3; i++) {
+    const wx = ghostX + 8 - (i + 1) * 5.3;
+    const wy = ghostY + 6 + Math.sin(wp + i * 1.5) * 1.5;
+    ctx.quadraticCurveTo(wx + 1.3, wy + 1.5, wx - 1.3, wy);
+  }
+  ctx.lineTo(ghostX - 8, ghostY - 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eyes — face right when working, center when idle
+  const eyeCx = isWorking ? ghostX + 1 : ghostX;
+  if (state === 'idle') {
+    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(eyeCx - 3, ghostY - 1, 1.5, 0, Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(eyeCx + 3, ghostY - 1, 1.5, 0, Math.PI); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.globalAlpha = 0.5 + Math.sin(gcFrame * 0.1) * 0.3;
+    ctx.font = 'bold 5px sans-serif'; ctx.textAlign = 'left';
+    const zo = Math.sin(gcFrame * 0.08) * 2;
+    ctx.fillText('z', ghostX + 8, ghostY - 6 + zo);
+    ctx.font = 'bold 7px sans-serif';
+    ctx.fillText('Z', ghostX + 11, ghostY - 10 + zo);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(eyeCx - 2, ghostY - 2, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eyeCx + 3, ghostY - 2, 2.2, 0, Math.PI * 2); ctx.fill();
+    // Pupils look toward desk (right) when working
+    const pupOff = isWorking ? 0.8 : 0;
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(eyeCx - 2 + pupOff, ghostY - 1.5, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(eyeCx + 3 + pupOff, ghostY - 1.5, 1, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // State indicators
+  if (state === 'error') {
+    ctx.fillStyle = '#ef4444'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('!', ghostX, ghostY - 12 + Math.sin(gcFrame * 0.15) * 1);
+  }
+  if (state === 'waiting') {
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('?', ghostX, ghostY - 12 + Math.sin(gcFrame * 0.08) * 2);
+  }
+
+  // Terminal number
+  ctx.fillStyle = '#64748b'; ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('T' + (idx + 1), w / 2, h - 1);
+}
+
+// Update ghost cells to match session list — full rebuild every time
+function updateGhostCells() {
+  for (let i = 0; i < 4; i++) {
+    const cell = document.getElementById('gcell-' + i);
+    if (!cell) continue;
+    const hasSession = i < sessionList.length && !sessionList[i].exited;
+    if (hasSession) {
+      // Always reinit canvas to ensure correct state
+      if (!gcCtxs[i]) initGhostCanvas(i);
+    } else {
+      // No session — show +
+      if (!cell.classList.contains('empty')) {
+        cell.classList.add('empty');
+        cell.innerHTML = '+';
+        gcCanvases[i] = null;
+        gcCtxs[i] = null;
+      }
+    }
+    // Highlight active
+    cell.classList.toggle('active', hasSession && sessionList[i]?.id === currentSessionId);
+  }
+}
+
+// Click handler — switch session from header (no toggleView needed)
+function ghostCellClick(idx) {
+  vibrate();
+  if (idx < sessionList.length && !sessionList[idx].exited) {
+    const id = sessionList[idx].id;
+    if (id === currentSessionId) return;
+    // Direct switch without toggleView
+    bufferSeqs[id] = 0;
+    socket.emit('attach', id);
+    term.reset();
+    autoScroll = true;
+    // If in office view, switch back to terminal
+    if (officeActive) toggleView();
+  } else if (sessionList.length < 4) {
+    createNewSession();
+  }
+}
+
+// Animation loop for ghost cells
+function animateGhostCells() {
+  gcFrame++;
+  for (let i = 0; i < 4; i++) {
+    if (gcCtxs[i]) drawGhostCell(i);
+  }
+  gcAnimId = requestAnimationFrame(animateGhostCells);
+}
+animateGhostCells();
+
+// Hook into session updates
+const origSessionHandler = socket.listeners('sessions')[0];
+socket.off('sessions', origSessionHandler);
+socket.on('sessions', (list) => {
+  sessionList = list;
+  list.forEach((s, i) => {
+    const termIdx = i + 1;
+    if (termIdx <= 4 && termStates) {
+      if (s.exited) termStates[termIdx] = 'error';
+    }
+  });
+  updateGhostCells();
+});
+
+// Also update cells when attached changes
+const origAttachedHandler = socket.listeners('attached')[0];
+socket.off('attached', origAttachedHandler);
+socket.on('attached', (id) => {
+  currentSessionId = id;
+  // ghost cells handle status display
+  socket.emit('sync', getSeq(id), id);
+  updateGhostCells();
+});
+
 // ==================== Chibi Office View ====================
 let officeActive = false;
 let officeAnimId = null;
 let officeFrame = 0;
 let officeW, officeH, officeDpr;
 let officeCanvas, officeCtx;
-
-// Terminal states — will be driven by real terminal output detection
-const termStates = { 1: 'idle', 2: 'idle' };
 // Mini terminal lines — will be fed from real output buffer
 const termLines = {
   1: ['$ claude --dangerously-skip', '> Waiting for input...'],
@@ -1263,34 +1630,25 @@ function oCircle(cx, cy, r, c) { officeCtx.fillStyle = c; officeCtx.beginPath();
 // ---- Office Background ----
 function drawOfficeBg() {
   const c = officeCtx;
-  c.fillStyle = '#1e1e38'; c.fillRect(0, 0, officeW, officeH * 0.55);
-  c.fillStyle = '#252545'; c.fillRect(0, officeH * 0.55, officeW, officeH * 0.45);
+  // Dark room
+  c.fillStyle = '#0f0f1a'; c.fillRect(0, 0, officeW, officeH);
+  // Floor
+  c.fillStyle = '#1a1a2e'; c.fillRect(0, officeH * 0.6, officeW, officeH * 0.4);
   c.strokeStyle = '#2d2d50'; c.lineWidth = 1;
-  c.beginPath(); c.moveTo(0, officeH * 0.55); c.lineTo(officeW, officeH * 0.55); c.stroke();
+  c.beginPath(); c.moveTo(0, officeH * 0.6); c.lineTo(officeW, officeH * 0.6); c.stroke();
+  // Floor grid (subtle)
+  c.strokeStyle = 'rgba(139,92,246,0.05)'; c.lineWidth = 0.5;
+  for (let i = 0; i < officeW; i += 30) { c.beginPath(); c.moveTo(i, officeH * 0.6); c.lineTo(i, officeH); c.stroke(); }
+  for (let i = officeH * 0.6; i < officeH; i += 20) { c.beginPath(); c.moveTo(0, i); c.lineTo(officeW, i); c.stroke(); }
 
-  // Window
-  const ww = officeW * 0.2, wh = officeH * 0.15, wx = officeW * 0.5 - ww / 2, wy = officeH * 0.08;
-  oFillRR(wx, wy, ww, wh, 4, '#0f172a');
-  c.strokeStyle = '#475569'; c.lineWidth = 2; oRoundRect(wx, wy, ww, wh, 4); c.stroke();
-  oCircle(wx + ww * 0.2, wy + wh * 0.3, 2, '#fde68a');
-  oCircle(wx + ww * 0.7, wy + wh * 0.5, 1.5, '#fde68a');
-  oCircle(wx + ww * 0.8, wy + wh * 0.25, 4, '#fde68a');
-
-  // Clock
-  const clkX = officeW * 0.15, clkY = officeH * 0.12;
-  oCircle(clkX, clkY, 12, '#1e293b');
-  c.strokeStyle = '#475569'; c.lineWidth = 1.5; c.beginPath(); c.arc(clkX, clkY, 12, 0, Math.PI * 2); c.stroke();
-  const now = Date.now() / 1000;
-  c.strokeStyle = '#e2e8f0'; c.lineWidth = 1.5;
-  c.beginPath(); c.moveTo(clkX, clkY); c.lineTo(clkX + Math.cos(now * 0.1) * 7, clkY + Math.sin(now * 0.1) * 7); c.stroke();
-  c.beginPath(); c.moveTo(clkX, clkY); c.lineTo(clkX + Math.cos(now * 0.8) * 9, clkY + Math.sin(now * 0.8) * 9); c.stroke();
-
-  // Poster
-  const px = officeW * 0.78, py = officeH * 0.06;
-  oFillRR(px, py, officeW * 0.12, officeH * 0.14, 3, '#2d2d50');
-  c.fillStyle = '#8b5cf6'; c.font = 'bold 8px sans-serif'; c.textAlign = 'center';
-  c.fillText('KEEP', px + officeW * 0.06, py + officeH * 0.05);
-  c.fillText('CODING', px + officeW * 0.06, py + officeH * 0.09);
+  // Stars / particles in background
+  c.fillStyle = '#4a4a7a';
+  for (let i = 0; i < 15; i++) {
+    const sx = (Math.sin(i * 7.3 + officeFrame * 0.003) * 0.5 + 0.5) * officeW;
+    const sy = (Math.cos(i * 4.1 + officeFrame * 0.005) * 0.5 + 0.5) * officeH * 0.55;
+    const sr = 1 + Math.sin(officeFrame * 0.02 + i) * 0.5;
+    oCircle(sx, sy, sr, `rgba(139,92,246,${0.15 + Math.sin(officeFrame * 0.03 + i) * 0.1})`);
+  }
 }
 
 // ---- Desk & Monitor ----
@@ -1320,115 +1678,146 @@ function drawMonitor(x, y, w, h, state, lines) {
   c.restore();
 }
 
-// ---- Bunny (Terminal 1) ----
-function drawBunny(cx, cy, s, state) {
+// ---- Ghost Character ----
+function drawGhost(cx, cy, s, state, color, label, ghostIdx) {
   const c = officeCtx;
-  const bob = state === 'busy' ? Math.sin(officeFrame * 0.3) * 2 : Math.sin(officeFrame * 0.05) * 1;
-  const by = cy + bob;
-  c.fillStyle = 'rgba(0,0,0,0.15)'; c.beginPath(); c.ellipse(cx, cy + 22*s, 14*s, 4*s, 0, 0, Math.PI*2); c.fill();
-  // Body
-  oFillRR(cx-12*s, by-2*s, 24*s, 20*s, 6*s, '#8b5cf6');
-  oFillRR(cx-7*s, by+10*s, 14*s, 6*s, 3*s, '#7c3aed');
-  // Arms
-  const aa = state === 'busy' ? Math.sin(officeFrame * 0.4) * 0.3 : 0;
-  c.save(); c.translate(cx-13*s, by+4*s); c.rotate(-0.3+aa); oFillRR(-3*s, 0, 6*s, 14*s, 3*s, '#8b5cf6'); oCircle(0, 14*s, 3*s, '#f0e6ff'); c.restore();
-  c.save(); c.translate(cx+13*s, by+4*s); c.rotate(0.3-aa); oFillRR(-3*s, 0, 6*s, 14*s, 3*s, '#8b5cf6'); oCircle(0, 14*s, 3*s, '#f0e6ff'); c.restore();
-  // Head
-  const hy = by - 18*s;
-  oCircle(cx, hy, 14*s, '#f0e6ff');
-  // Ears
-  const et = state === 'waiting' ? 0.3 : 0;
-  c.save(); c.translate(cx-7*s, hy-12*s); c.rotate(-0.15-et); oFillRR(-4*s,-20*s,8*s,22*s,4*s,'#f0e6ff'); oFillRR(-2.5*s,-17*s,5*s,16*s,2.5*s,'#ffb3c6'); c.restore();
-  c.save(); c.translate(cx+7*s, hy-12*s); c.rotate(0.15+et); oFillRR(-4*s,-20*s,8*s,22*s,4*s,'#f0e6ff'); oFillRR(-2.5*s,-17*s,5*s,16*s,2.5*s,'#ffb3c6'); c.restore();
-  if (state === 'error') { c.strokeStyle='#ef4444'; c.lineWidth=1.5; c.beginPath(); c.moveTo(cx-5*s,hy-28*s); c.quadraticCurveTo(cx,hy-35*s,cx+5*s,hy-28*s); c.stroke(); }
-  // Face
-  if (state === 'idle') {
-    c.strokeStyle='#1e293b'; c.lineWidth=1.5; c.beginPath(); c.arc(cx-5*s,hy-1*s,2.5*s,0,Math.PI); c.stroke();
-    c.beginPath(); c.arc(cx+5*s,hy-1*s,2.5*s,0,Math.PI); c.stroke();
-    c.fillStyle='#94a3b8'; c.textAlign='left'; const zo = Math.sin(officeFrame*0.08)*3;
-    c.globalAlpha=0.6+Math.sin(officeFrame*0.1)*0.3;
-    c.font=`bold ${8*s}px sans-serif`; c.fillText('z',cx+16*s,hy-12*s+zo);
-    c.font=`bold ${10*s}px sans-serif`; c.fillText('z',cx+22*s,hy-20*s+zo);
-    c.font=`bold ${12*s}px sans-serif`; c.fillText('Z',cx+28*s,hy-28*s+zo);
-    c.globalAlpha=1;
-  } else {
-    const es = state === 'waiting' ? 3.5 : 3;
-    oCircle(cx-5*s,hy-1*s,es*s,'#1e293b'); oCircle(cx+5*s,hy-1*s,es*s,'#1e293b');
-    oCircle(cx-4*s,hy-2.5*s,1.2*s,'#fff'); oCircle(cx+6*s,hy-2.5*s,1.2*s,'#fff');
-    if (state==='waiting') { oCircle(cx-4*s,hy-0.5*s,1.5*s,'#8b5cf6'); oCircle(cx+6*s,hy-0.5*s,1.5*s,'#8b5cf6'); }
-  }
-  c.globalAlpha=0.4; oCircle(cx-9*s,hy+3*s,3*s,'#fca5a5'); oCircle(cx+9*s,hy+3*s,3*s,'#fca5a5'); c.globalAlpha=1;
-  c.fillStyle='#ffb3c6'; c.beginPath(); c.moveTo(cx,hy+2*s); c.lineTo(cx-2*s,hy+4*s); c.lineTo(cx+2*s,hy+4*s); c.closePath(); c.fill();
-  if (state==='error') { c.strokeStyle='#1e293b'; c.lineWidth=1; c.beginPath(); c.arc(cx,hy+8*s,3*s,Math.PI,0); c.stroke(); }
-  if (state==='busy') { c.strokeStyle='#1e293b'; c.lineWidth=1.2; c.beginPath(); c.moveTo(cx-3*s,hy+6*s); c.lineTo(cx+3*s,hy+6*s); c.stroke(); }
-  if (state==='busy' && Math.sin(officeFrame*0.15)>0) { c.fillStyle='#7dd3fc'; c.beginPath(); c.moveTo(cx+14*s,hy-6*s); c.quadraticCurveTo(cx+17*s,hy-2*s,cx+14*s,hy+2*s); c.quadraticCurveTo(cx+11*s,hy-2*s,cx+14*s,hy-6*s); c.fill(); }
-  if (state==='error') { c.globalAlpha=0.3+Math.sin(officeFrame*0.1)*0.2; oCircle(cx-10*s,hy-32*s+Math.sin(officeFrame*0.07)*5,5*s,'#94a3b8'); oCircle(cx+8*s,hy-36*s+Math.cos(officeFrame*0.09)*4,4*s,'#94a3b8'); c.globalAlpha=1; }
-  if (state==='waiting') { const qf=Math.sin(officeFrame*0.08)*4; c.fillStyle='#f59e0b'; c.font=`bold ${14*s}px sans-serif`; c.textAlign='center'; c.fillText('?',cx,hy-32*s+qf); }
-  c.fillStyle='#94a3b8'; c.font=`${9*s}px sans-serif`; c.textAlign='center'; c.fillText('Terminal 1',cx,cy+30*s);
-}
+  // Float animation
+  const float = state === 'busy'
+    ? Math.sin(officeFrame * 0.2 + ghostIdx) * 4
+    : Math.sin(officeFrame * 0.05 + ghostIdx * 2) * 3;
+  const gy = cy + float;
 
-// ---- Cat (Terminal 2) ----
-function drawCat(cx, cy, s, state) {
-  const c = officeCtx;
-  const bob = state === 'busy' ? Math.sin(officeFrame*0.25+1)*2 : Math.sin(officeFrame*0.04)*1;
-  const by = cy + bob;
-  c.fillStyle='rgba(0,0,0,0.15)'; c.beginPath(); c.ellipse(cx,cy+22*s,14*s,4*s,0,0,Math.PI*2); c.fill();
-  // Tail
-  c.strokeStyle='#f59e0b'; c.lineWidth=4*s; c.lineCap='round';
-  const tw = state==='busy' ? Math.sin(officeFrame*0.2)*15 : Math.sin(officeFrame*0.05)*5;
-  c.beginPath(); c.moveTo(cx+12*s,by+8*s); c.quadraticCurveTo(cx+22*s,by+tw*0.5,cx+18*s+tw*0.3,by-10*s); c.stroke();
-  // Body
-  oFillRR(cx-12*s,by-2*s,24*s,20*s,6*s,'#f59e0b'); oFillRR(cx-6*s,by+4*s,12*s,12*s,4*s,'#fde68a');
-  // Arms
-  const aa = state==='busy' ? Math.sin(officeFrame*0.35+0.5)*0.3 : 0;
-  c.save(); c.translate(cx-13*s,by+4*s); c.rotate(-0.3+aa); oFillRR(-3*s,0,6*s,14*s,3*s,'#f59e0b'); oCircle(0,14*s,3*s,'#f59e0b'); c.restore();
-  c.save(); c.translate(cx+13*s,by+4*s); c.rotate(0.3-aa); oFillRR(-3*s,0,6*s,14*s,3*s,'#f59e0b'); oCircle(0,14*s,3*s,'#f59e0b'); c.restore();
-  // Head
-  const hy = by-18*s;
-  oCircle(cx,hy,14*s,'#f59e0b');
-  // Ears
-  c.fillStyle='#f59e0b';
-  c.beginPath(); c.moveTo(cx-13*s,hy-6*s); c.lineTo(cx-9*s,hy-20*s); c.lineTo(cx-2*s,hy-8*s); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(cx+13*s,hy-6*s); c.lineTo(cx+9*s,hy-20*s); c.lineTo(cx+2*s,hy-8*s); c.closePath(); c.fill();
-  c.fillStyle='#ffb3c6';
-  c.beginPath(); c.moveTo(cx-11*s,hy-8*s); c.lineTo(cx-9*s,hy-17*s); c.lineTo(cx-4*s,hy-9*s); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(cx+11*s,hy-8*s); c.lineTo(cx+9*s,hy-17*s); c.lineTo(cx+4*s,hy-9*s); c.closePath(); c.fill();
-  // Stripes
-  c.strokeStyle='#d97706'; c.lineWidth=1.5*s; c.beginPath();
-  c.moveTo(cx-3*s,hy-12*s); c.lineTo(cx-5*s,hy-8*s); c.moveTo(cx,hy-13*s); c.lineTo(cx,hy-9*s); c.moveTo(cx+3*s,hy-12*s); c.lineTo(cx+5*s,hy-8*s); c.stroke();
-  // Headphones
-  c.strokeStyle='#64748b'; c.lineWidth=2.5*s; c.beginPath(); c.arc(cx,hy-5*s,15*s,Math.PI*1.15,Math.PI*1.85); c.stroke();
-  oFillRR(cx-17*s,hy-4*s,6*s,10*s,3*s,'#64748b'); oFillRR(cx+11*s,hy-4*s,6*s,10*s,3*s,'#64748b');
-  // Face
-  if (state==='idle') {
-    c.strokeStyle='#1e293b'; c.lineWidth=1.5; c.beginPath(); c.arc(cx-5*s,hy,2.5*s,0,Math.PI); c.stroke();
-    c.beginPath(); c.arc(cx+5*s,hy,2.5*s,0,Math.PI); c.stroke();
-    oFillRR(cx+14*s,hy-24*s,22*s,16*s,6*s,'rgba(255,255,255,0.9)');
-    c.fillStyle='#64748b'; c.font=`bold ${9*s}px sans-serif`; c.textAlign='center'; c.fillText('zzZ',cx+25*s,hy-14*s);
-    oCircle(cx+14*s,hy-10*s,2*s,'rgba(255,255,255,0.9)'); oCircle(cx+12*s,hy-6*s,1.5*s,'rgba(255,255,255,0.8)');
+  // Shadow
+  c.globalAlpha = 0.2;
+  c.fillStyle = '#000';
+  c.beginPath();
+  c.ellipse(cx, cy + 28 * s, 16 * s, 5 * s, 0, 0, Math.PI * 2);
+  c.fill();
+  c.globalAlpha = 1;
+
+  // Glow when busy
+  if (state === 'busy') {
+    c.globalAlpha = 0.15 + Math.sin(officeFrame * 0.1) * 0.1;
+    oCircle(cx, gy, 28 * s, color);
+    c.globalAlpha = 1;
+  }
+
+  // Ghost body — rounded top, wavy bottom
+  c.fillStyle = color;
+  c.beginPath();
+  // Top dome
+  c.arc(cx, gy - 4 * s, 18 * s, Math.PI, 0);
+  // Right side down
+  c.lineTo(cx + 18 * s, gy + 16 * s);
+  // Wavy bottom (3 waves)
+  const waveAmp = 4 * s;
+  const waveW = 12 * s;
+  const wavePhase = officeFrame * 0.08 + ghostIdx;
+  for (let i = 0; i < 3; i++) {
+    const wx = cx + 18 * s - (i + 1) * waveW;
+    const wy = gy + 16 * s + Math.sin(wavePhase + i * 1.5) * waveAmp;
+    const wx2 = wx - waveW / 2;
+    c.quadraticCurveTo(wx + waveW * 0.25, wy + waveAmp, wx - waveW * 0.25, wy);
+  }
+  c.lineTo(cx - 18 * s, gy - 4 * s);
+  c.closePath();
+  c.fill();
+
+  // Inner highlight
+  c.globalAlpha = 0.15;
+  c.fillStyle = '#fff';
+  c.beginPath();
+  c.arc(cx - 4 * s, gy - 10 * s, 10 * s, 0, Math.PI * 2);
+  c.fill();
+  c.globalAlpha = 1;
+
+  // Eyes
+  if (state === 'idle') {
+    // Sleeping — closed eyes
+    c.strokeStyle = '#1e293b'; c.lineWidth = 2;
+    c.beginPath(); c.arc(cx - 6 * s, gy - 4 * s, 3 * s, 0, Math.PI); c.stroke();
+    c.beginPath(); c.arc(cx + 6 * s, gy - 4 * s, 3 * s, 0, Math.PI); c.stroke();
+    // Zzz
+    c.fillStyle = '#94a3b8'; c.textAlign = 'left';
+    const zo = Math.sin(officeFrame * 0.08) * 3;
+    c.globalAlpha = 0.5 + Math.sin(officeFrame * 0.1) * 0.3;
+    c.font = `bold ${8 * s}px sans-serif`; c.fillText('z', cx + 18 * s, gy - 16 * s + zo);
+    c.font = `bold ${11 * s}px sans-serif`; c.fillText('Z', cx + 24 * s, gy - 24 * s + zo);
+    c.globalAlpha = 1;
   } else {
-    const ew=state==='waiting'?4:3.5, eh=state==='waiting'?4.5:3.5;
-    c.fillStyle='#fde68a'; c.beginPath(); c.ellipse(cx-5*s,hy,ew*s,eh*s,0,0,Math.PI*2); c.fill();
-    c.beginPath(); c.ellipse(cx+5*s,hy,ew*s,eh*s,0,0,Math.PI*2); c.fill();
-    c.fillStyle='#1e293b'; c.beginPath(); c.ellipse(cx-5*s,hy,1.2*s,eh*0.8*s,0,0,Math.PI*2); c.fill();
-    c.beginPath(); c.ellipse(cx+5*s,hy,1.2*s,eh*0.8*s,0,0,Math.PI*2); c.fill();
-    oCircle(cx-4*s,hy-1.5*s,1*s,'#fff'); oCircle(cx+6*s,hy-1.5*s,1*s,'#fff');
+    // Open eyes — big white circles with pupils
+    const eyeR = state === 'waiting' ? 5 * s : 4.5 * s;
+    oCircle(cx - 6 * s, gy - 5 * s, eyeR, '#fff');
+    oCircle(cx + 6 * s, gy - 5 * s, eyeR, '#fff');
+    // Pupils
+    const pupilOff = state === 'busy' ? Math.sin(officeFrame * 0.1) * 1.5 * s : 0;
+    oCircle(cx - 6 * s + pupilOff, gy - 4 * s, 2.2 * s, '#1e293b');
+    oCircle(cx + 6 * s + pupilOff, gy - 4 * s, 2.2 * s, '#1e293b');
+    // Eye shine
+    oCircle(cx - 5 * s, gy - 6 * s, 1 * s, '#fff');
+    oCircle(cx + 7 * s, gy - 6 * s, 1 * s, '#fff');
   }
-  c.fillStyle='#ffb3c6'; c.beginPath(); c.moveTo(cx,hy+3*s); c.lineTo(cx-2*s,hy+5*s); c.lineTo(cx+2*s,hy+5*s); c.closePath(); c.fill();
-  // Whiskers
-  c.strokeStyle='#d4d4d4'; c.lineWidth=0.8;
-  [-1,1].forEach(sd => { for(let i=-1;i<=1;i++) { c.beginPath(); c.moveTo(cx+sd*5*s,hy+4*s+i*2*s); c.lineTo(cx+sd*18*s,hy+3*s+i*3*s); c.stroke(); } });
-  c.globalAlpha=0.35; oCircle(cx-9*s,hy+4*s,3*s,'#fca5a5'); oCircle(cx+9*s,hy+4*s,3*s,'#fca5a5'); c.globalAlpha=1;
-  if (state==='busy') { c.globalAlpha=0.3+Math.sin(officeFrame*0.2)*0.2; oCircle(cx-14*s,hy+1*s,4*s,'#10b981'); oCircle(cx+14*s,hy+1*s,4*s,'#10b981'); c.globalAlpha=1; }
-  if (state==='error') {
-    c.globalAlpha=0.3+Math.sin(officeFrame*0.08)*0.2; oCircle(cx-8*s,hy-26*s+Math.sin(officeFrame*0.06)*5,4*s,'#94a3b8'); oCircle(cx+6*s,hy-30*s+Math.cos(officeFrame*0.08)*4,3*s,'#94a3b8'); c.globalAlpha=1;
-    c.strokeStyle='#ef4444'; c.lineWidth=1.2;
-    [-1,1].forEach(sd => { const ex=cx+sd*5*s; c.beginPath(); for(let a=0;a<Math.PI*3;a+=0.2){const r=a*0.6*s; c.lineTo(ex+Math.cos(a+officeFrame*0.1)*r,hy+Math.sin(a+officeFrame*0.1)*r);} c.stroke(); });
+
+  // Mouth
+  if (state === 'busy') {
+    // Determined line mouth
+    c.strokeStyle = '#1e293b'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(cx - 3 * s, gy + 2 * s); c.lineTo(cx + 3 * s, gy + 2 * s); c.stroke();
+  } else if (state === 'error') {
+    // Wavy worried mouth
+    c.strokeStyle = '#1e293b'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(cx - 4 * s, gy + 3 * s);
+    c.quadraticCurveTo(cx - 2 * s, gy + 1 * s, cx, gy + 3 * s);
+    c.quadraticCurveTo(cx + 2 * s, gy + 5 * s, cx + 4 * s, gy + 3 * s);
+    c.stroke();
+  } else if (state === 'waiting') {
+    // Small O mouth
+    oCircle(cx, gy + 2 * s, 2.5 * s, '#1e293b');
+    oCircle(cx, gy + 2 * s, 1.5 * s, color);
+  } else {
+    // Gentle smile
+    c.strokeStyle = '#1e293b'; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(cx, gy + 1 * s, 3 * s, 0.1, Math.PI - 0.1); c.stroke();
   }
-  if (state==='waiting') { const pf=Math.sin(officeFrame*0.1)*2; c.fillStyle='#f59e0b'; c.font=`${10*s}px sans-serif`; c.textAlign='center'; c.fillText('\u{1F44B}',cx+18*s,hy+pf); }
-  const catLabel = sessionList.length >= 2 ? 'Terminal 2' : 'Tap to create';
-  c.fillStyle = sessionList.length >= 2 ? '#94a3b8' : '#64748b';
-  c.font=`${9*s}px sans-serif`; c.textAlign='center'; c.fillText(catLabel,cx,cy+30*s);
+
+  // Blush
+  c.globalAlpha = 0.3;
+  oCircle(cx - 12 * s, gy, 3 * s, '#fca5a5');
+  oCircle(cx + 12 * s, gy, 3 * s, '#fca5a5');
+  c.globalAlpha = 1;
+
+  // State indicators
+  if (state === 'error') {
+    // Red exclamation
+    c.fillStyle = '#ef4444'; c.font = `bold ${14 * s}px sans-serif`; c.textAlign = 'center';
+    c.fillText('!', cx, gy - 26 * s + Math.sin(officeFrame * 0.15) * 2);
+  }
+  if (state === 'waiting') {
+    // Yellow question mark
+    c.fillStyle = '#f59e0b'; c.font = `bold ${14 * s}px sans-serif`; c.textAlign = 'center';
+    c.fillText('?', cx, gy - 26 * s + Math.sin(officeFrame * 0.08) * 3);
+  }
+  if (state === 'busy') {
+    // Sparkles
+    const sp = officeFrame * 0.12 + ghostIdx;
+    c.fillStyle = '#7dd3fc';
+    for (let i = 0; i < 3; i++) {
+      const angle = sp + i * 2.1;
+      const dist = (14 + Math.sin(sp + i) * 4) * s;
+      const spx = cx + Math.cos(angle) * dist;
+      const spy = gy - 10 * s + Math.sin(angle) * dist * 0.6;
+      const spSize = (1.5 + Math.sin(officeFrame * 0.2 + i) * 0.8) * s;
+      // 4-point star
+      c.beginPath();
+      c.moveTo(spx, spy - spSize); c.lineTo(spx + spSize * 0.3, spy);
+      c.lineTo(spx, spy + spSize); c.lineTo(spx - spSize * 0.3, spy);
+      c.closePath(); c.fill();
+    }
+  }
+
+  // Label
+  c.fillStyle = '#94a3b8'; c.font = `${9 * s}px sans-serif`; c.textAlign = 'center';
+  c.fillText(label, cx, cy + 34 * s);
 }
 
 // ---- Detect terminal state from output (multi-session) ----
@@ -1438,7 +1827,7 @@ const lastRealOutputTimes = {};
 
 function updateOfficeOutput(data, sessionId) {
   const idx = sessionId || 1;
-  if (idx > 2) return; // Only track first 2 sessions for office view
+  if (idx > 4) return; // Track up to 4 sessions
 
   const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '').replace(/\r/g, '');
   const visible = clean.replace(/\s/g, '');
@@ -1458,13 +1847,13 @@ function updateOfficeOutput(data, sessionId) {
 }
 
 function checkIdle() {
-  [1, 2].forEach(idx => {
+  [1, 2, 3, 4].forEach(idx => {
     if (Date.now() - (lastRealOutputTimes[idx] || 0) > 3000 && termStates[idx] === 'busy') {
       termStates[idx] = 'idle';
     }
   });
   // Mark unconnected sessions
-  if (sessionList.length < 2) termStates[2] = 'idle';
+  for (let i = sessionList.length + 1; i <= 4; i++) termStates[i] = 'idle';
 }
 
 // ---- Main Loop ----
@@ -1476,22 +1865,35 @@ function startOfficeLoop() {
     officeCtx.clearRect(0, 0, officeW, officeH);
     drawOfficeBg();
 
-    const deskW = officeW * 0.3, deskH = 14;
-    const monW = officeW * 0.22, monH = officeH * 0.14;
     const charScale = Math.min(officeW / 400, officeH / 500) * 1.1;
-    const deskY = officeH * 0.52;
 
-    // Left: Bunny
-    const lx = officeW * 0.27;
-    drawDesk(lx - deskW/2, deskY, deskW, deskH);
-    drawMonitor(lx - monW/2, deskY - monH - 4, monW, monH, termStates[1], termLines[1]);
-    drawBunny(lx, deskY - monH - 10, charScale, termStates[1]);
+    // Desks in top-left area
+    const deskW = officeW * 0.22, deskH = 12;
+    const monW = officeW * 0.16, monH = officeH * 0.10;
+    const desk1X = officeW * 0.08, desk1Y = officeH * 0.18;
+    const desk2X = officeW * 0.08, desk2Y = officeH * 0.36;
 
-    // Right: Cat
-    const rx = officeW * 0.73;
-    drawDesk(rx - deskW/2, deskY, deskW, deskH);
-    drawMonitor(rx - monW/2, deskY - monH - 4, monW, monH, termStates[2], termLines[2]);
-    drawCat(rx, deskY - monH - 10, charScale, termStates[2]);
+    drawDesk(desk1X, desk1Y, deskW, deskH);
+    drawMonitor(desk1X + 4, desk1Y - monH - 2, monW, monH, termStates[1], termLines[1]);
+    drawDesk(desk2X, desk2Y, deskW, deskH);
+    drawMonitor(desk2X + 4, desk2Y - monH - 2, monW, monH, termStates[2], termLines[2]);
+
+    // Ghost 1 (purple) — near desk 1
+    const g1x = officeW * 0.52, g1y = officeH * 0.28;
+    drawGhost(g1x, g1y, charScale, termStates[1], '#8b5cf6', 'Terminal 1', 0);
+
+    // Ghost 2 (cyan) — near desk 2
+    const g2x = officeW * 0.78, g2y = officeH * 0.50;
+    const g2label = sessionList.length >= 2 ? 'Terminal 2' : 'Tap to create';
+    drawGhost(g2x, g2y, charScale, termStates[2], '#06b6d4', g2label, 1);
+
+    // Draw connection lines from ghosts to their desks (subtle)
+    officeCtx.strokeStyle = 'rgba(139,92,246,0.15)'; officeCtx.lineWidth = 1;
+    officeCtx.setLineDash([4, 4]);
+    officeCtx.beginPath(); officeCtx.moveTo(desk1X + deskW, desk1Y); officeCtx.lineTo(g1x - 18 * charScale, g1y); officeCtx.stroke();
+    officeCtx.strokeStyle = 'rgba(6,182,212,0.15)';
+    officeCtx.beginPath(); officeCtx.moveTo(desk2X + deskW, desk2Y); officeCtx.lineTo(g2x - 18 * charScale, g2y); officeCtx.stroke();
+    officeCtx.setLineDash([]);
 
     officeAnimId = requestAnimationFrame(loop);
   }
@@ -1503,23 +1905,22 @@ document.getElementById('pixel-view').addEventListener('click', (e) => {
   if (!officeActive) return;
   const rect = officeCanvas.getBoundingClientRect();
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  const lx = officeW * 0.27, rx = officeW * 0.73, charY = officeH * 0.38;
+  const g1x = officeW * 0.52, g1y = officeH * 0.28;
+  const g2x = officeW * 0.78, g2y = officeH * 0.50;
 
-  if (Math.hypot(x - lx, y - charY) < 60) {
-    // Tap bunny → switch to terminal 1
+  if (Math.hypot(x - g1x, y - g1y) < 60) {
+    // Tap ghost 1 → switch to terminal 1
     const id = sessionList[0]?.id;
     if (id) {
       switchSession(id);
-      toggleView(); // Switch back to terminal view
-      showToast('Terminal 1 (Bunny)');
+      showToast('Terminal 1');
     }
     vibrate();
-  } else if (Math.hypot(x - rx, y - charY) < 60) {
-    // Tap cat → switch to terminal 2 (or create if doesn't exist)
+  } else if (Math.hypot(x - g2x, y - g2y) < 60) {
+    // Tap ghost 2 → switch to terminal 2 (or create if doesn't exist)
     if (sessionList.length >= 2) {
       switchSession(sessionList[1].id);
-      toggleView();
-      showToast('Terminal 2 (Cat)');
+      showToast('Terminal 2');
     } else {
       createNewSession();
       showToast('Creating Terminal 2...');
