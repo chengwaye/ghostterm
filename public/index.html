@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0f1a">
+  <link rel="manifest" href="/manifest.json">
+  <title>Claude Remote</title>
+
+  <!-- xterm.js -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+
+  <!-- socket.io -->
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.0/dist/socket.io.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface2: #252545;
+    --primary: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --border: #2d2d50;
+    --btn-radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    touch-action: manipulation;
+    position: fixed;
+    width: 100%;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+
+  .logo { font-weight: 700; font-size: 15px; color: var(--primary); }
+
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--danger); transition: background 0.3s;
+  }
+  .status-dot.connected { background: var(--success); }
+
+  .header-btns { display: flex; gap: 4px; }
+
+  .header-btn {
+    background: var(--surface2); border: none; color: var(--text-dim);
+    width: 36px; height: 36px; border-radius: 8px; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .header-btn:active { background: var(--primary); color: white; }
+
+  /* Terminal */
+  #terminal-container {
+    flex: 1; min-height: 0; background: #000; overflow: hidden;
+  }
+  #terminal-container .xterm { padding: 4px; height: 100%; }
+
+  /* Controls */
+  #controls {
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  #controls.collapsed { max-height: 0; padding: 0; overflow: hidden; border-top: none; }
+
+  /* Quick Actions */
+  .quick-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+
+  .qbtn {
+    flex: 1; min-width: 48px; height: 40px;
+    border: 1px solid var(--border); border-radius: var(--btn-radius);
+    background: var(--surface2); color: var(--text);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .qbtn:active { transform: scale(0.93); background: var(--primary); border-color: var(--primary); }
+  .qbtn.green { border-color: var(--success); color: var(--success); }
+  .qbtn.green:active { background: var(--success); color: white; }
+  .qbtn.red { border-color: var(--danger); color: var(--danger); }
+  .qbtn.red:active { background: var(--danger); color: white; }
+  .qbtn.amber { border-color: var(--warning); color: var(--warning); }
+  .qbtn.amber:active { background: var(--warning); color: white; }
+
+  /* D-Pad */
+  .dpad-area { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px; }
+
+  .dpad {
+    display: grid;
+    grid-template-areas: ". up ." "left center right" ". down .";
+    grid-template-columns: 52px 52px 52px;
+    grid-template-rows: 46px 46px 46px;
+    gap: 4px;
+  }
+
+  .dpad-btn {
+    border: 1px solid var(--border); border-radius: var(--btn-radius);
+    background: var(--surface2); color: var(--text); font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .dpad-btn:active { transform: scale(0.9); background: var(--primary); border-color: var(--primary); }
+  .dpad-btn.up { grid-area: up; }
+  .dpad-btn.down { grid-area: down; }
+  .dpad-btn.left { grid-area: left; }
+  .dpad-btn.right { grid-area: right; }
+  .dpad-btn.center {
+    grid-area: center; background: var(--primary); border-color: var(--primary);
+    color: white; font-size: 12px; font-weight: 700;
+  }
+  .dpad-btn.center:active { background: var(--primary-hover); }
+
+  .side-btns { display: flex; flex-direction: column; gap: 6px; }
+
+  .side-btn {
+    width: 64px; height: 44px;
+    border: 1px solid var(--border); border-radius: var(--btn-radius);
+    background: var(--surface2); color: var(--text);
+    font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
+  }
+  .side-btn:active { transform: scale(0.93); background: var(--primary); border-color: var(--primary); }
+
+  /* Upload row */
+  .upload-row { display: flex; gap: 6px; }
+
+  .upload-btn {
+    flex: 1; height: 42px;
+    border: 1px dashed var(--border); border-radius: var(--btn-radius);
+    background: var(--surface2); color: var(--text-dim); font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .upload-btn:active { border-color: var(--primary); color: var(--primary); }
+  .upload-btn.uploading { border-color: var(--warning); color: var(--warning); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  /* Input bar (fixed at bottom, outside #app) */
+  #input-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; gap: 6px;
+  }
+
+  #input-bar input {
+    flex: 1; height: 42px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--btn-radius); color: var(--text);
+    font-size: 16px; padding: 0 12px; outline: none;
+    font-family: 'Menlo', 'Courier New', monospace;
+    caret-color: var(--primary);
+  }
+  #input-bar input:focus { border-color: var(--primary); }
+
+  .send-btn {
+    width: 64px; height: 42px; background: var(--primary); border: none;
+    border-radius: var(--btn-radius); color: white; font-weight: 700;
+    font-size: 14px; cursor: pointer;
+  }
+  .send-btn:active { background: var(--primary-hover); }
+
+  /* Claude menu */
+  .claude-menu {
+    display: none; position: fixed; bottom: 50%; left: 50%;
+    transform: translate(-50%, 50%);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 12px; z-index: 1001;
+    width: min(300px, 85vw); gap: 8px; flex-direction: column;
+  }
+  .claude-menu.visible { display: flex; }
+
+  .claude-menu-btn {
+    height: 50px; border: 1px solid var(--border); border-radius: var(--btn-radius);
+    background: var(--surface2); color: var(--text);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    user-select: none;
+  }
+  .claude-menu-btn:active { background: var(--primary); border-color: var(--primary); }
+  .claude-menu-btn .desc { font-weight: 400; font-size: 11px; color: var(--text-dim); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 20px; font-size: 13px;
+    color: var(--text); z-index: 999; transition: transform 0.3s;
+    white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Font overlay */
+  .font-overlay {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 30px; z-index: 1000;
+    display: none; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .font-overlay.visible { display: flex; }
+  .font-overlay .label { font-size: 14px; color: var(--text-dim); }
+  .font-overlay .size { font-size: 28px; font-weight: 700; }
+  .font-controls { display: flex; gap: 12px; }
+  .font-controls button {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 22px; cursor: pointer;
+  }
+  .font-controls button:active { background: var(--primary); }
+
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+  .backdrop.visible { display: block; }
+
+  #file-input { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="logo">Claude Remote</span>
+      <span class="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting...</span>
+      </span>
+    </div>
+    <div class="header-btns">
+      <button class="header-btn" onclick="toggleFontOverlay()" title="Font size">A</button>
+      <button class="header-btn" onclick="toggleControls()" id="toggleBtn" title="Toggle controls">&#x25BC;</button>
+    </div>
+  </header>
+
+  <div id="terminal-container"></div>
+
+  <div id="controls" style="padding-bottom:54px">
+    <!-- Quick Actions -->
+    <div class="quick-row">
+      <button class="qbtn green" onclick="send('y\r')">y</button>
+      <button class="qbtn red" onclick="send('n\r')">n</button>
+      <button class="qbtn amber" onclick="send('\x1b')">Esc</button>
+      <button class="qbtn" onclick="send('\t')">Tab</button>
+      <button class="qbtn red" onclick="send('\x03')">^C</button>
+      <button class="qbtn" onclick="send('\x1a')">^Z</button>
+    </div>
+
+    <!-- D-Pad + Side Buttons -->
+    <div class="dpad-area">
+      <div class="side-btns">
+        <button class="side-btn" onclick="showClaudeMenu()">claude</button>
+        <button class="side-btn" onclick="send('/')">/ cmd</button>
+      </div>
+      <div class="dpad">
+        <button class="dpad-btn up" onclick="send('\x1b[A')">&#x2191;</button>
+        <button class="dpad-btn left" onclick="send('\x1b[D')">&#x2190;</button>
+        <button class="dpad-btn center" onclick="send('\r')">Enter</button>
+        <button class="dpad-btn right" onclick="send('\x1b[C')">&#x2192;</button>
+        <button class="dpad-btn down" onclick="send('\x1b[B')">&#x2193;</button>
+      </div>
+      <div class="side-btns">
+        <button class="side-btn" onclick="send(' ')">Space</button>
+        <button class="side-btn" onclick="send('\x7f')">Bksp</button>
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="upload-row">
+      <button class="upload-btn" id="cameraBtn" onclick="pickFile('camera')">
+        <span>&#x1F4F7;</span> Camera
+      </button>
+      <button class="upload-btn" id="fileBtn" onclick="pickFile('file')">
+        <span>&#x1F4C1;</span> File
+      </button>
+      <button class="upload-btn" id="pastePathBtn" onclick="pasteLastPath()" style="display:none">
+        <span>&#x1F4CB;</span> <span id="lastPathLabel">Paste Path</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Input bar (outside #app) -->
+<div id="input-bar">
+  <input type="text" id="textInput" placeholder="Tap Send to type..."
+    autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text">
+  <button class="send-btn" id="sendBtn">Send</button>
+</div>
+
+<!-- Claude Menu -->
+<div class="backdrop" id="claudeBackdrop" onclick="hideClaudeMenu()" style="display:none"></div>
+<div class="claude-menu" id="claudeMenu">
+  <button class="claude-menu-btn" onclick="claudeRun('')">New Session</button>
+  <button class="claude-menu-btn" onclick="claudeRun('--resume')">Resume <span class="desc">&#x7E7C;&#x7E8C;&#x4E0A;&#x6B21;&#x5C0D;&#x8A71;</span></button>
+  <button class="claude-menu-btn" onclick="claudeRun('--continue')">Continue <span class="desc">&#x5E36;&#x5165;&#x4E0A;&#x6B21;&#x7D50;&#x679C;</span></button>
+</div>
+
+<!-- Font Size Overlay -->
+<div class="backdrop" id="backdrop" onclick="toggleFontOverlay()"></div>
+<div class="font-overlay" id="fontOverlay">
+  <span class="label">Terminal Font Size</span>
+  <span class="size" id="fontSizeDisplay">13</span>
+  <div class="font-controls">
+    <button onclick="changeFontSize(-1)">&#x2212;</button>
+    <button onclick="changeFontSize(1)">+</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Hidden File Input -->
+<input type="file" id="file-input" accept="image/*,application/pdf,.txt,.md,.json,.csv">
+
+<script>
+// ==================== Config ====================
+const ACCESS_CODE = new URLSearchParams(location.search).get('code') || '';
+let fontSize = parseInt(localStorage.getItem('fontSize') || '13');
+let lastUploadedPath = localStorage.getItem('lastPath') || '';
+let controlsCollapsed = false;
+let keyboardOpen = false;
+let resizeLocked = false;
+
+// ==================== Terminal ====================
+const termContainer = document.getElementById('terminal-container');
+const term = new Terminal({
+  cursorBlink: true,
+  fontSize: fontSize,
+  fontFamily: "'Menlo', 'Monaco', 'Courier New', monospace",
+  scrollback: 10000,
+  theme: {
+    background: '#000000', foreground: '#e2e8f0', cursor: '#8b5cf6',
+    cursorAccent: '#000000', selectionBackground: 'rgba(139, 92, 246, 0.35)',
+    black: '#1a1a2e', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
+    blue: '#3b82f6', magenta: '#8b5cf6', cyan: '#06b6d4', white: '#e2e8f0',
+  },
+  allowProposedApi: true,
+});
+
+const fitAddon = new FitAddon.FitAddon();
+const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+term.loadAddon(fitAddon);
+term.loadAddon(webLinksAddon);
+term.open(termContainer);
+
+setTimeout(() => {
+  try { fitAddon.fit(); } catch {}
+}, 100);
+
+// ==================== Socket ====================
+const socket = io({
+  auth: { code: ACCESS_CODE },
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: Infinity,
+});
+
+// ==================== Multi-Session State ====================
+let currentSessionId = null;
+let bufferSeqs = {};
+
+socket.on('connect', () => {
+  document.getElementById('statusDot').classList.add('connected');
+  document.getElementById('statusText').textContent = 'Connected';
+  try {
+    fitAddon.fit();
+    socket.emit('resize', { cols: term.cols, rows: term.rows });
+  } catch {}
+});
+
+socket.on('disconnect', () => {
+  document.getElementById('statusDot').classList.remove('connected');
+  document.getElementById('statusText').textContent = 'Reconnecting...';
+});
+
+socket.on('sessions', () => {}); // acknowledge
+
+socket.on('attached', (id) => {
+  currentSessionId = id;
+  document.getElementById('statusText').textContent = 'T' + id + ' Syncing...';
+  socket.emit('sync', bufferSeqs[id] || 0, id);
+});
+
+socket.on('output', (data, seq, id) => {
+  if (id !== undefined) bufferSeqs[id] = seq;
+  if (id === currentSessionId || id === undefined) {
+    term.write(data);
+  }
+});
+
+socket.on('delta', (data, seq, id) => {
+  const sessId = id || currentSessionId;
+  bufferSeqs[sessId] = seq;
+  if (sessId === currentSessionId && data) {
+    term.write(data);
+  }
+  document.getElementById('statusText').textContent = 'T' + currentSessionId + ' Connected';
+});
+
+socket.on('history', (data, seq, id) => {
+  const sessId = id || currentSessionId;
+  bufferSeqs[sessId] = seq;
+  if (sessId === currentSessionId) {
+    term.reset();
+    term.write(data, () => term.scrollToBottom());
+  }
+  document.getElementById('statusText').textContent = 'T' + currentSessionId + ' Connected';
+});
+
+socket.on('exit', (code, id) => {
+  if (id === currentSessionId || id === undefined) {
+    term.writeln('\r\n\x1b[33m[Session ended. Refresh to reconnect.]\x1b[0m');
+  }
+});
+
+socket.on('error_msg', (msg) => showToast(msg));
+socket.on('auth_error', (msg) => term.writeln('\x1b[31m[Auth Error: ' + msg + ']\x1b[0m'));
+
+// Reconnect on iOS foreground
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (!socket.connected) {
+      socket.connect();
+    } else if (currentSessionId) {
+      socket.emit('sync', bufferSeqs[currentSessionId] || 0, currentSessionId);
+    }
+  }
+});
+
+// Terminal input -> socket
+term.onData((data) => {
+  socket.emit('input', data);
+});
+
+// ==================== Prevent buttons from triggering iOS keyboard ====================
+document.getElementById('controls').addEventListener('touchstart', (e) => {
+  if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+    const btn = e.target.closest('button') || e.target;
+    if (btn.classList.contains('upload-btn')) return; // upload needs native gesture
+    e.preventDefault();
+    btn.click();
+  }
+}, { passive: false });
+
+// ==================== Controls ====================
+function send(data) {
+  vibrate();
+  socket.emit('input', data);
+}
+
+function vibrate() {
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+// ==================== Claude Menu ====================
+function showClaudeMenu() {
+  vibrate();
+  document.getElementById('claudeMenu').classList.add('visible');
+  document.getElementById('claudeBackdrop').style.display = 'block';
+}
+
+function hideClaudeMenu() {
+  document.getElementById('claudeMenu').classList.remove('visible');
+  document.getElementById('claudeBackdrop').style.display = 'none';
+}
+
+function claudeRun(flag) {
+  hideClaudeMenu();
+  const cmd = flag
+    ? 'claude --dangerously-skip-permissions ' + flag + '\r'
+    : 'claude --dangerously-skip-permissions\r';
+  socket.emit('input', cmd);
+  vibrate();
+}
+
+// ==================== Toggle Controls ====================
+function toggleControls() {
+  controlsCollapsed = !controlsCollapsed;
+  document.getElementById('controls').classList.toggle('collapsed', controlsCollapsed);
+  document.getElementById('toggleBtn').textContent = controlsCollapsed ? '\u25B2' : '\u25BC';
+  setTimeout(() => { try { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); } catch {} }, 350);
+}
+
+// ==================== Font Size ====================
+function toggleFontOverlay() {
+  const overlay = document.getElementById('fontOverlay');
+  const backdrop = document.getElementById('backdrop');
+  const visible = overlay.classList.contains('visible');
+  overlay.classList.toggle('visible', !visible);
+  backdrop.classList.toggle('visible', !visible);
+}
+
+function changeFontSize(delta) {
+  fontSize = Math.max(8, Math.min(24, fontSize + delta));
+  term.options.fontSize = fontSize;
+  document.getElementById('fontSizeDisplay').textContent = fontSize;
+  localStorage.setItem('fontSize', fontSize);
+  try { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); } catch {}
+  vibrate();
+}
+
+document.getElementById('fontSizeDisplay').textContent = fontSize;
+
+// ==================== File Upload ====================
+function pickFile(mode) {
+  const input = document.getElementById('file-input');
+  if (mode === 'camera') {
+    input.accept = 'image/*';
+    input.capture = 'environment';
+  } else {
+    input.accept = 'image/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css';
+    input.removeAttribute('capture');
+  }
+  input.click();
+}
+
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  document.getElementById('cameraBtn').classList.add('uploading');
+  document.getElementById('fileBtn').classList.add('uploading');
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/upload' + (ACCESS_CODE ? '?code=' + ACCESS_CODE : ''), {
+      method: 'POST', body: formData,
+    });
+    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    const data = await res.json();
+    lastUploadedPath = data.path;
+    localStorage.setItem('lastPath', lastUploadedPath);
+    document.getElementById('pastePathBtn').style.display = 'flex';
+    document.getElementById('lastPathLabel').textContent = file.name;
+    showToast('Uploaded: ' + data.path);
+  } catch (err) {
+    showToast('Error: ' + err.message);
+  } finally {
+    document.getElementById('cameraBtn').classList.remove('uploading');
+    document.getElementById('fileBtn').classList.remove('uploading');
+    e.target.value = '';
+  }
+});
+
+function pasteLastPath() {
+  if (!lastUploadedPath) return;
+  socket.emit('input', lastUploadedPath);
+  vibrate();
+  showToast('Path pasted');
+}
+
+if (lastUploadedPath) {
+  document.getElementById('pastePathBtn').style.display = 'flex';
+  document.getElementById('lastPathLabel').textContent = 'Last File';
+}
+
+// ==================== Toast ====================
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ==================== Resize ====================
+function handleResize() {
+  if (keyboardOpen || resizeLocked) return;
+  try { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); } catch {}
+}
+
+window.addEventListener('resize', () => setTimeout(handleResize, 300));
+screen.orientation?.addEventListener?.('change', () => setTimeout(handleResize, 500));
+
+// ==================== iOS Keyboard Handling ====================
+// Lock app height so keyboard can't push layout
+const lockedHeight = window.innerHeight;
+const appEl = document.getElementById('app');
+appEl.style.height = lockedHeight + 'px';
+appEl.style.maxHeight = lockedHeight + 'px';
+
+const controls = document.getElementById('controls');
+const textInput = document.getElementById('textInput');
+const inputBar = document.getElementById('input-bar');
+const sendBtn = document.getElementById('sendBtn');
+
+// Prevent xterm textarea from getting focus (no keyboard on terminal tap)
+const xtermTextarea = termContainer.querySelector('textarea');
+if (xtermTextarea) {
+  xtermTextarea.addEventListener('focus', () => xtermTextarea.blur());
+}
+
+// Focus with preventScroll to stop iOS from pushing viewport
+textInput.addEventListener('touchstart', (e) => {
+  if (document.activeElement !== textInput) {
+    e.preventDefault();
+    textInput.focus({ preventScroll: true });
+  }
+}, { passive: false });
+
+textInput.addEventListener('focus', () => {
+  keyboardOpen = true;
+  resizeLocked = true;
+  controls.style.visibility = 'hidden';
+  syncInputBar();
+});
+
+textInput.addEventListener('blur', () => {
+  keyboardOpen = false;
+  inputBar.style.bottom = '0';
+  controls.style.visibility = '';
+  setTimeout(() => { resizeLocked = false; }, 600);
+});
+
+// Position input bar above keyboard
+function syncInputBar() {
+  if (!window.visualViewport || !keyboardOpen) return;
+  inputBar.style.bottom = (lockedHeight - window.visualViewport.height) + 'px';
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncInputBar);
+  window.visualViewport.addEventListener('scroll', syncInputBar);
+}
+
+// Send button — prevent blur
+sendBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  sendTextInput();
+}, { passive: false });
+
+sendBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  sendTextInput();
+});
+
+function sendTextInput() {
+  const text = textInput.value;
+  if (text) {
+    socket.emit('input', text + '\r');
+    textInput.value = '';
+    vibrate();
+    textInput.focus({ preventScroll: true });
+  } else {
+    textInput.focus({ preventScroll: true });
+  }
+}
+
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendTextInput();
+  }
+});
+
+// ==================== PWA ====================
+if ('serviceWorker' in navigator) {
+  const swBlob = new Blob([
+    "self.addEventListener('install', () => self.skipWaiting());",
+    "self.addEventListener('activate', () => self.clients.claim());",
+    "self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));"
+  ], { type: 'application/javascript' });
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+}
+</script>
+</body>
+</html>
