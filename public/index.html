@@ -43,6 +43,7 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     touch-action: manipulation;
+    /* Prevent iOS from resizing viewport when keyboard appears */
     position: fixed;
     width: 100%;
   }
@@ -51,7 +52,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
   }
 
   /* Header */
@@ -66,30 +66,64 @@
     min-height: 44px;
   }
 
-  .logo { font-weight: 700; font-size: 15px; color: var(--primary); }
+  .logo {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary);
+  }
 
-  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
 
   .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--danger); transition: background 0.3s;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    transition: background 0.3s;
   }
+
   .status-dot.connected { background: var(--success); }
 
-  .header-btns { display: flex; gap: 4px; }
+  .header-btns {
+    display: flex;
+    gap: 4px;
+  }
 
   .header-btn {
-    background: var(--surface2); border: none; color: var(--text-dim);
-    width: 36px; height: 36px; border-radius: 8px; font-size: 16px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+    border: none;
+    color: var(--text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+
   .header-btn:active { background: var(--primary); color: white; }
 
   /* Terminal */
   #terminal-container {
-    flex: 1; min-height: 0; background: #000; overflow: hidden;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    background: #000;
+    overflow: hidden;
   }
-  #terminal-container .xterm { padding: 4px; height: 100%; }
+
+  #terminal-container .xterm {
+    padding: 4px;
+    height: 100%;
+  }
 
   /* Controls */
   #controls {
@@ -98,22 +132,49 @@
     border-top: 1px solid var(--border);
     padding: 8px;
     padding-bottom: max(8px, env(safe-area-inset-bottom));
+    transition: max-height 0.3s;
     overflow-y: auto;
   }
-  #controls.collapsed { max-height: 0; padding: 0; overflow: hidden; border-top: none; }
+
+  #controls.collapsed {
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+    border-top: none;
+  }
 
   /* Quick Actions */
-  .quick-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .quick-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
 
   .qbtn {
-    flex: 1; min-width: 48px; height: 40px;
-    border: 1px solid var(--border); border-radius: var(--btn-radius);
-    background: var(--surface2); color: var(--text);
-    font-size: 13px; font-weight: 600; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    flex: 1;
+    min-width: 48px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s;
     user-select: none;
   }
-  .qbtn:active { transform: scale(0.93); background: var(--primary); border-color: var(--primary); }
+
+  .qbtn:active {
+    transform: scale(0.93);
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
   .qbtn.green { border-color: var(--success); color: var(--success); }
   .qbtn.green:active { background: var(--success); color: white; }
   .qbtn.red { border-color: var(--danger); color: var(--danger); }
@@ -121,137 +182,337 @@
   .qbtn.amber { border-color: var(--warning); color: var(--warning); }
   .qbtn.amber:active { background: var(--warning); color: white; }
 
-  /* D-Pad */
-  .dpad-area { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px; }
+  /* D-Pad + Enter */
+  .dpad-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    position: relative;
+  }
 
   .dpad {
     display: grid;
-    grid-template-areas: ". up ." "left center right" ". down .";
+    grid-template-areas:
+      ". up ."
+      "left center right"
+      ". down .";
     grid-template-columns: 52px 52px 52px;
     grid-template-rows: 46px 46px 46px;
     gap: 4px;
   }
 
   .dpad-btn {
-    border: 1px solid var(--border); border-radius: var(--btn-radius);
-    background: var(--surface2); color: var(--text); font-size: 20px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     user-select: none;
   }
-  .dpad-btn:active { transform: scale(0.9); background: var(--primary); border-color: var(--primary); }
+
+  .dpad-btn:active {
+    transform: scale(0.9);
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
   .dpad-btn.up { grid-area: up; }
   .dpad-btn.down { grid-area: down; }
   .dpad-btn.left { grid-area: left; }
   .dpad-btn.right { grid-area: right; }
   .dpad-btn.center {
-    grid-area: center; background: var(--primary); border-color: var(--primary);
-    color: white; font-size: 12px; font-weight: 700;
+    grid-area: center;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
   }
   .dpad-btn.center:active { background: var(--primary-hover); }
 
-  .side-btns { display: flex; flex-direction: column; gap: 6px; }
+  .side-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
 
   .side-btn {
-    width: 64px; height: 44px;
-    border: 1px solid var(--border); border-radius: var(--btn-radius);
-    background: var(--surface2); color: var(--text);
-    font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
-  }
-  .side-btn:active { transform: scale(0.93); background: var(--primary); border-color: var(--primary); }
-
-  /* Upload row */
-  .upload-row { display: flex; gap: 6px; }
-
-  .upload-btn {
-    flex: 1; height: 42px;
-    border: 1px dashed var(--border); border-radius: var(--btn-radius);
-    background: var(--surface2); color: var(--text-dim); font-size: 13px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-  }
-  .upload-btn:active { border-color: var(--primary); color: var(--primary); }
-  .upload-btn.uploading { border-color: var(--warning); color: var(--warning); animation: pulse 1s infinite; }
-
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-  /* Input bar (fixed at bottom, outside #app) */
-  #input-bar {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-    padding: 6px 8px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
-    background: var(--surface); border-top: 1px solid var(--border);
-    display: flex; gap: 6px;
-  }
-
-  #input-bar input {
-    flex: 1; height: 42px;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--btn-radius); color: var(--text);
-    font-size: 16px; padding: 0 12px; outline: none;
-    font-family: 'Menlo', 'Courier New', monospace;
-    caret-color: var(--primary);
-  }
-  #input-bar input:focus { border-color: var(--primary); }
-
-  .send-btn {
-    width: 64px; height: 42px; background: var(--primary); border: none;
-    border-radius: var(--btn-radius); color: white; font-weight: 700;
-    font-size: 14px; cursor: pointer;
-  }
-  .send-btn:active { background: var(--primary-hover); }
-
-  /* Claude menu */
-  .claude-menu {
-    display: none; position: fixed; bottom: 50%; left: 50%;
-    transform: translate(-50%, 50%);
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 12px; z-index: 1001;
-    width: min(300px, 85vw); gap: 8px; flex-direction: column;
-  }
-  .claude-menu.visible { display: flex; }
-
-  .claude-menu-btn {
-    height: 50px; border: 1px solid var(--border); border-radius: var(--btn-radius);
-    background: var(--surface2); color: var(--text);
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 64px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
     user-select: none;
   }
-  .claude-menu-btn:active { background: var(--primary); border-color: var(--primary); }
-  .claude-menu-btn .desc { font-weight: 400; font-size: 11px; color: var(--text-dim); }
+
+  .side-btn:active {
+    transform: scale(0.93);
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  /* Input Row */
+  .input-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .input-row input {
+    flex: 1;
+    height: 42px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    color: var(--text);
+    font-size: 15px;
+    padding: 0 12px;
+    outline: none;
+    font-family: 'Menlo', 'Courier New', monospace;
+  }
+
+  .input-row input:focus { border-color: var(--primary); }
+
+  .send-btn {
+    width: 64px;
+    height: 42px;
+    background: var(--primary);
+    border: none;
+    border-radius: var(--btn-radius);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .send-btn:active { background: var(--primary-hover); }
+
+  /* Upload Row */
+  .upload-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .upload-btn {
+    flex: 1;
+    height: 42px;
+    border: 1px dashed var(--border);
+    border-radius: var(--btn-radius);
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .upload-btn:active { border-color: var(--primary); color: var(--primary); }
+
+  .upload-btn.uploading {
+    border-color: var(--warning);
+    color: var(--warning);
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
 
   /* Toast */
   .toast {
-    position: fixed; bottom: 80px; left: 50%;
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
     transform: translateX(-50%) translateY(100px);
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 10px 20px; font-size: 13px;
-    color: var(--text); z-index: 999; transition: transform 0.3s;
-    white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 999;
+    transition: transform 0.3s;
+    white-space: nowrap;
+    max-width: 90vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* Font overlay */
+  /* Hidden file input */
+  #file-input { display: none; }
+
+  /* Scrollbar */
+  #controls::-webkit-scrollbar { width: 4px; }
+  #controls::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Font size overlay */
   .font-overlay {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 20px 30px; z-index: 1000;
-    display: none; flex-direction: column; align-items: center; gap: 12px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 30px;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
   }
+
   .font-overlay.visible { display: flex; }
+
   .font-overlay .label { font-size: 14px; color: var(--text-dim); }
   .font-overlay .size { font-size: 28px; font-weight: 700; }
-  .font-controls { display: flex; gap: 12px; }
-  .font-controls button {
-    width: 48px; height: 48px; border-radius: 50%;
-    border: 1px solid var(--border); background: var(--surface2);
-    color: var(--text); font-size: 22px; cursor: pointer;
+
+  .font-controls {
+    display: flex;
+    gap: 12px;
   }
+
+  .font-controls button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 22px;
+    cursor: pointer;
+  }
+
   .font-controls button:active { background: var(--primary); }
 
-  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+  }
+
   .backdrop.visible { display: block; }
 
-  #file-input { display: none; }
+  /* Claude menu popup */
+  .claude-menu {
+    display: none;
+    position: fixed;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    z-index: 1001;
+    width: min(300px, 85vw);
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .claude-menu.visible { display: flex; }
+
+  .claude-menu-btn {
+    height: 50px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    user-select: none;
+  }
+
+  .claude-menu-btn:active {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .claude-menu-btn .desc {
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .claude-menu-btn:active .desc { color: rgba(255,255,255,0.7); }
+
+/* Select mode overlay */
+  #select-overlay {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    background: #000;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  #select-overlay pre {
+    margin: 0;
+    padding: 4px;
+    color: #e2e8f0;
+    font-size: inherit;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    line-height: 1.2;
+    white-space: pre;
+    min-height: 100%;
+  }
+  #select-overlay .select-bar {
+    position: sticky;
+    top: 0;
+    background: var(--primary);
+    color: white;
+    text-align: center;
+    padding: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 11;
+  }
+  #select-overlay .select-bar-bottom {
+    position: sticky;
+    bottom: 0;
+    background: var(--primary);
+    color: white;
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 11;
+  }
+
+  /* Office view */
+  #office-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  .header-btn.active {
+    background: var(--primary);
+    color: white;
+  }
 </style>
 </head>
 <body>
@@ -265,71 +526,114 @@
       </span>
     </div>
     <div class="header-btns">
+      <button class="header-btn" id="viewToggleBtn" onclick="toggleView()" title="Switch view" style="font-size:13px">🎮</button>
       <button class="header-btn" onclick="toggleFontOverlay()" title="Font size">A</button>
-      <button class="header-btn" onclick="toggleControls()" id="toggleBtn" title="Toggle controls">&#x25BC;</button>
+      <button class="header-btn" onclick="toggleControls()" id="toggleBtn" title="Toggle controls">▼</button>
     </div>
   </header>
 
-  <div id="terminal-container"></div>
+  <div id="terminal-container">
+    <div id="select-overlay">
+      <div class="select-bar" onclick="exitSelectMode()">Select Mode — tap to exit</div>
+      <pre id="select-text"></pre>
+      <div class="select-bar-bottom" onclick="exitSelectMode()">Done</div>
+    </div>
+  </div>
+
+  <!-- Chibi Office View -->
+  <div id="pixel-view" style="display:none;flex:1;min-height:0;position:relative;background:#1a1a2e;overflow:hidden">
+    <canvas id="office-canvas"></canvas>
+  </div>
 
   <div id="controls" style="padding-bottom:54px">
     <!-- Quick Actions -->
     <div class="quick-row">
       <button class="qbtn green" onclick="send('y\r')">y</button>
       <button class="qbtn red" onclick="send('n\r')">n</button>
-      <button class="qbtn amber" onclick="send('\x1b')">Esc</button>
+      <button class="qbtn" onclick="send('\x1b[Z')">S+Tab</button>
+      <button class="qbtn" onclick="send('/')">/ cmd</button>
       <button class="qbtn" onclick="send('\t')">Tab</button>
-      <button class="qbtn red" onclick="send('\x03')">^C</button>
-      <button class="qbtn" onclick="send('\x1a')">^Z</button>
+      <button class="qbtn" onclick="send('\n')">換行</button>
     </div>
 
     <!-- D-Pad + Side Buttons -->
     <div class="dpad-area">
       <div class="side-btns">
         <button class="side-btn" onclick="showClaudeMenu()">claude</button>
-        <button class="side-btn" onclick="send('/')">/ cmd</button>
+        <button class="side-btn red" onclick="send('\x03')">^C</button>
+        <button class="side-btn" onclick="send('\x1b')">Esc</button>
       </div>
       <div class="dpad">
-        <button class="dpad-btn up" onclick="send('\x1b[A')">&#x2191;</button>
-        <button class="dpad-btn left" onclick="send('\x1b[D')">&#x2190;</button>
+        <button class="dpad-btn up" onclick="send('\x1b[A')">↑</button>
+        <button class="dpad-btn left" onclick="send('\x1b[D')">←</button>
         <button class="dpad-btn center" onclick="send('\r')">Enter</button>
-        <button class="dpad-btn right" onclick="send('\x1b[C')">&#x2192;</button>
-        <button class="dpad-btn down" onclick="send('\x1b[B')">&#x2193;</button>
+        <button class="dpad-btn right" onclick="send('\x1b[C')">→</button>
+        <button class="dpad-btn down" onclick="send('\x1b[B')">↓</button>
       </div>
       <div class="side-btns">
         <button class="side-btn" onclick="send(' ')">Space</button>
         <button class="side-btn" onclick="send('\x7f')">Bksp</button>
+        <button class="side-btn" id="copySelBtn" onclick="copySelection()">Copy</button>
+      </div>
+      <div style="position:absolute;right:4px;top:50%;transform:translateY(-40%);display:flex;flex-direction:column;gap:4px">
+        <button class="side-btn" onclick="autoScroll=true;term.scrollToBottom();vibrate()" style="width:28px;height:30px;font-size:9px;min-width:0;color:var(--success)">⏬</button>
+        <button class="side-btn" onclick="autoScroll=false;term.scrollLines(-5);vibrate()" style="width:28px;height:36px;font-size:13px;min-width:0">▲</button>
+        <button class="side-btn" onclick="term.scrollLines(5);vibrate()" style="width:28px;height:36px;font-size:13px;min-width:0">▼</button>
       </div>
     </div>
 
     <!-- Upload -->
     <div class="upload-row">
       <button class="upload-btn" id="cameraBtn" onclick="pickFile('camera')">
-        <span>&#x1F4F7;</span> Camera
+        <span>📷</span> Camera
       </button>
       <button class="upload-btn" id="fileBtn" onclick="pickFile('file')">
-        <span>&#x1F4C1;</span> File
+        <span>📁</span> File
       </button>
       <button class="upload-btn" id="pastePathBtn" onclick="pasteLastPath()" style="display:none">
-        <span>&#x1F4CB;</span> <span id="lastPathLabel">Paste Path</span>
+        <span>📋</span> <span id="lastPathLabel">Paste Path</span>
       </button>
     </div>
   </div>
 </div>
 
-<!-- Input bar (outside #app) -->
-<div id="input-bar">
-  <input type="text" id="textInput" placeholder="Tap Send to type..."
-    autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text">
-  <button class="send-btn" id="sendBtn">Send</button>
+<!-- Visible input bar (OUTSIDE #app) -->
+<div id="input-bar" style="
+  position:fixed; bottom:0; left:0; right:0; z-index:9998;
+  padding:6px 8px; padding-bottom:max(6px, env(safe-area-inset-bottom));
+  background:var(--surface); border-top:1px solid var(--border);
+">
+  <div class="input-row" style="margin-bottom:0">
+    <div style="flex:1;position:relative;height:42px">
+      <!-- Visible placeholder underneath -->
+      <div id="textDisplay" style="
+        position:absolute; top:0; left:0; right:0; bottom:0;
+        background:var(--bg); border:1px solid var(--border);
+        border-radius:var(--btn-radius); color:var(--text-dim); font-size:15px;
+        padding:0 12px; font-family:'Menlo','Courier New',monospace;
+        line-height:42px; overflow:hidden; white-space:nowrap;
+        text-overflow:ellipsis; pointer-events:none;
+      ">Tap Send to type...</div>
+      <!-- Real input on top — transparent text, visible caret -->
+      <input type="text" id="hiddenInput" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" style="
+        position:absolute; top:0; left:0; right:0; bottom:0;
+        width:100%; height:100%; background:transparent;
+        border:1px solid transparent; border-radius:var(--btn-radius);
+        color:var(--text); font-size:16px; padding:0 12px;
+        font-family:'Menlo','Courier New',monospace;
+        outline:none; caret-color:var(--primary);
+      ">
+    </div>
+    <button class="send-btn" onclick="sendTextInput()">Send</button>
+  </div>
 </div>
 
 <!-- Claude Menu -->
-<div class="backdrop" id="claudeBackdrop" onclick="hideClaudeMenu()" style="display:none"></div>
+<div class="backdrop visible" id="claudeBackdrop" onclick="hideClaudeMenu()" style="display:none"></div>
 <div class="claude-menu" id="claudeMenu">
   <button class="claude-menu-btn" onclick="claudeRun('')">New Session</button>
-  <button class="claude-menu-btn" onclick="claudeRun('--resume')">Resume <span class="desc">&#x7E7C;&#x7E8C;&#x4E0A;&#x6B21;&#x5C0D;&#x8A71;</span></button>
-  <button class="claude-menu-btn" onclick="claudeRun('--continue')">Continue <span class="desc">&#x5E36;&#x5165;&#x4E0A;&#x6B21;&#x7D50;&#x679C;</span></button>
+  <button class="claude-menu-btn" onclick="claudeRun('--resume')">Resume <span class="desc">繼續上次對話</span></button>
+  <button class="claude-menu-btn" onclick="claudeRun('--continue')">Continue <span class="desc">帶入上次結果</span></button>
 </div>
 
 <!-- Font Size Overlay -->
@@ -338,16 +642,17 @@
   <span class="label">Terminal Font Size</span>
   <span class="size" id="fontSizeDisplay">13</span>
   <div class="font-controls">
-    <button onclick="changeFontSize(-1)">&#x2212;</button>
+    <button onclick="changeFontSize(-1)">−</button>
     <button onclick="changeFontSize(1)">+</button>
   </div>
 </div>
+
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <!-- Hidden File Input -->
-<input type="file" id="file-input" accept="image/*,application/pdf,.txt,.md,.json,.csv">
+<input type="file" id="file-input" accept="image/*,video/*,audio/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css,.zip,.tar,.gz">
 
 <script>
 // ==================== Config ====================
@@ -355,8 +660,6 @@ const ACCESS_CODE = new URLSearchParams(location.search).get('code') || '';
 let fontSize = parseInt(localStorage.getItem('fontSize') || '13');
 let lastUploadedPath = localStorage.getItem('lastPath') || '';
 let controlsCollapsed = false;
-let keyboardOpen = false;
-let resizeLocked = false;
 
 // ==================== Terminal ====================
 const termContainer = document.getElementById('terminal-container');
@@ -366,10 +669,19 @@ const term = new Terminal({
   fontFamily: "'Menlo', 'Monaco', 'Courier New', monospace",
   scrollback: 10000,
   theme: {
-    background: '#000000', foreground: '#e2e8f0', cursor: '#8b5cf6',
-    cursorAccent: '#000000', selectionBackground: 'rgba(139, 92, 246, 0.35)',
-    black: '#1a1a2e', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
-    blue: '#3b82f6', magenta: '#8b5cf6', cyan: '#06b6d4', white: '#e2e8f0',
+    background: '#000000',
+    foreground: '#e2e8f0',
+    cursor: '#8b5cf6',
+    cursorAccent: '#000000',
+    selectionBackground: 'rgba(139, 92, 246, 0.35)',
+    black: '#1a1a2e',
+    red: '#ef4444',
+    green: '#10b981',
+    yellow: '#f59e0b',
+    blue: '#3b82f6',
+    magenta: '#8b5cf6',
+    cyan: '#06b6d4',
+    white: '#e2e8f0',
   },
   allowProposedApi: true,
 });
@@ -380,8 +692,21 @@ term.loadAddon(fitAddon);
 term.loadAddon(webLinksAddon);
 term.open(termContainer);
 
+// ==================== Safe Fit (preserve scroll) ====================
+function safeFit() {
+  try {
+    fitAddon.fit();
+    socket.emit('resize', { cols: term.cols, rows: term.rows });
+    term.scrollToBottom();
+  } catch {}
+}
+
+// Initial fit — no scroll restore needed (terminal is empty)
 setTimeout(() => {
-  try { fitAddon.fit(); } catch {}
+  try {
+    fitAddon.fit();
+    socket.emit('resize', { cols: term.cols, rows: term.rows });
+  } catch {}
 }, 100);
 
 // ==================== Socket ====================
@@ -392,17 +717,24 @@ const socket = io({
   reconnectionAttempts: Infinity,
 });
 
-// ==================== Multi-Session State ====================
+// ==================== Connection & Multi-Terminal Sync ====================
 let currentSessionId = null;
-let bufferSeqs = {};
+let bufferSeqs = {};     // sessionId → last known seq
+let hasConnectedOnce = false;
+let autoScroll = true;
+let sessionList = [];
+
+function getSeq(id) { return bufferSeqs[id || currentSessionId] || 0; }
+function setSeq(id, seq) { bufferSeqs[id || currentSessionId] = seq; }
 
 socket.on('connect', () => {
   document.getElementById('statusDot').classList.add('connected');
-  document.getElementById('statusText').textContent = 'Connected';
-  try {
-    fitAddon.fit();
+  document.getElementById('statusText').textContent = 'Syncing...';
+  // Server sends 'sessions' + 'attached' → then we sync
+  if (hasConnectedOnce) {
     socket.emit('resize', { cols: term.cols, rows: term.rows });
-  } catch {}
+  }
+  hasConnectedOnce = true;
 });
 
 socket.on('disconnect', () => {
@@ -410,38 +742,57 @@ socket.on('disconnect', () => {
   document.getElementById('statusText').textContent = 'Reconnecting...';
 });
 
-socket.on('sessions', () => {}); // acknowledge
-
+// Server tells us which session we're attached to
 socket.on('attached', (id) => {
   currentSessionId = id;
-  document.getElementById('statusText').textContent = 'T' + id + ' Syncing...';
-  socket.emit('sync', bufferSeqs[id] || 0, id);
+  document.getElementById('statusText').textContent = `T${id} Syncing...`;
+  socket.emit('sync', getSeq(id), id);
 });
 
+// Server sends list of sessions
+socket.on('sessions', (list) => {
+  sessionList = list;
+  // Update office view states
+  list.forEach((s, i) => {
+    const termIdx = i + 1;
+    if (termIdx <= 2 && termStates) {
+      if (s.exited) termStates[termIdx] = 'error';
+    }
+  });
+});
+
+// Output from current session
 socket.on('output', (data, seq, id) => {
-  if (id !== undefined) bufferSeqs[id] = seq;
+  if (id !== undefined) setSeq(id, seq);
+  // Only write to terminal if it's from the current session
   if (id === currentSessionId || id === undefined) {
-    term.write(data);
+    term.write(data, () => { if (autoScroll) term.scrollToBottom(); });
+  }
+  // Feed office mini-terminal for the correct session
+  if (typeof updateOfficeOutput === 'function') {
+    updateOfficeOutput(data, id);
   }
 });
 
+// Delta sync
 socket.on('delta', (data, seq, id) => {
   const sessId = id || currentSessionId;
-  bufferSeqs[sessId] = seq;
+  setSeq(sessId, seq);
   if (sessId === currentSessionId && data) {
-    term.write(data);
+    term.write(data, () => { if (autoScroll) term.scrollToBottom(); });
   }
-  document.getElementById('statusText').textContent = 'T' + currentSessionId + ' Connected';
+  document.getElementById('statusText').textContent = `T${currentSessionId} Connected`;
 });
 
+// Full history
 socket.on('history', (data, seq, id) => {
   const sessId = id || currentSessionId;
-  bufferSeqs[sessId] = seq;
+  setSeq(sessId, seq);
   if (sessId === currentSessionId) {
     term.reset();
     term.write(data, () => term.scrollToBottom());
   }
-  document.getElementById('statusText').textContent = 'T' + currentSessionId + ' Connected';
+  document.getElementById('statusText').textContent = `T${currentSessionId} Connected`;
 });
 
 socket.on('exit', (code, id) => {
@@ -450,44 +801,65 @@ socket.on('exit', (code, id) => {
   }
 });
 
-socket.on('error_msg', (msg) => showToast(msg));
-socket.on('auth_error', (msg) => term.writeln('\x1b[31m[Auth Error: ' + msg + ']\x1b[0m'));
+socket.on('error_msg', (msg) => {
+  showToast(msg);
+});
+
+socket.on('auth_error', (msg) => {
+  term.writeln(`\x1b[31m[Auth Error: ${msg}]\x1b[0m`);
+});
+
+// Switch to a different terminal session
+function switchSession(id) {
+  if (id === currentSessionId) return;
+  socket.emit('attach', id);
+  // Reset terminal for new session
+  term.reset();
+  autoScroll = true;
+}
+
+// Create new terminal session
+function createNewSession() {
+  socket.emit('create-session');
+}
+
+// Close a terminal session
+function closeSession(id) {
+  socket.emit('close-session', id);
+}
 
 // Reconnect on iOS foreground
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     if (!socket.connected) {
       socket.connect();
-    } else if (currentSessionId) {
-      socket.emit('sync', bufferSeqs[currentSessionId] || 0, currentSessionId);
+    } else {
+      socket.emit('sync', getSeq(currentSessionId), currentSessionId);
     }
   }
 });
 
-// Terminal input -> socket
+// Terminal input → socket
 term.onData((data) => {
   socket.emit('input', data);
 });
 
-// ==================== Prevent buttons from triggering iOS keyboard ====================
+// Terminal is view-only on mobile — all input goes through textInput
+
+// Terminal is view-only for touch — no keyboard on tap, allows text selection
+
+// Prevent all control buttons from triggering iOS keyboard
 document.getElementById('controls').addEventListener('touchstart', (e) => {
+  // Allow text input to be tapped normally
+  if (e.target.id === 'textInput') return;
   if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
     const btn = e.target.closest('button') || e.target;
-    if (btn.classList.contains('upload-btn')) return; // upload needs native gesture
+    // Upload buttons need native gesture chain for file picker on iOS
+    if (btn.classList.contains('upload-btn')) return;
     e.preventDefault();
     btn.click();
   }
 }, { passive: false });
-
-// ==================== Controls ====================
-function send(data) {
-  vibrate();
-  socket.emit('input', data);
-}
-
-function vibrate() {
-  if (navigator.vibrate) navigator.vibrate(15);
-}
 
 // ==================== Claude Menu ====================
 function showClaudeMenu() {
@@ -504,18 +876,29 @@ function hideClaudeMenu() {
 function claudeRun(flag) {
   hideClaudeMenu();
   const cmd = flag
-    ? 'claude --dangerously-skip-permissions ' + flag + '\r'
+    ? `claude --dangerously-skip-permissions ${flag}\r`
     : 'claude --dangerously-skip-permissions\r';
   socket.emit('input', cmd);
   vibrate();
 }
 
+// ==================== Controls ====================
+function send(data) {
+  vibrate();
+  socket.emit('input', data);
+  // Do NOT focus terminal - iOS will pop up keyboard
+}
+
+function vibrate() {
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
 // ==================== Toggle Controls ====================
 function toggleControls() {
   controlsCollapsed = !controlsCollapsed;
-  document.getElementById('controls').classList.toggle('collapsed', controlsCollapsed);
-  document.getElementById('toggleBtn').textContent = controlsCollapsed ? '\u25B2' : '\u25BC';
-  setTimeout(() => { try { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); } catch {} }, 350);
+  controls.classList.toggle('collapsed', controlsCollapsed);
+  document.getElementById('toggleBtn').textContent = controlsCollapsed ? '▲' : '▼';
+  setTimeout(() => safeFit(), 350);
 }
 
 // ==================== Font Size ====================
@@ -532,7 +915,7 @@ function changeFontSize(delta) {
   term.options.fontSize = fontSize;
   document.getElementById('fontSizeDisplay').textContent = fontSize;
   localStorage.setItem('fontSize', fontSize);
-  try { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); } catch {}
+  safeFit();
   vibrate();
 }
 
@@ -545,7 +928,7 @@ function pickFile(mode) {
     input.accept = 'image/*';
     input.capture = 'environment';
   } else {
-    input.accept = 'image/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css';
+    input.accept = 'image/*,video/*,audio/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css,.zip,.tar,.gz';
     input.removeAttribute('capture');
   }
   input.click();
@@ -555,6 +938,7 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
+  const btn = e.target.previousElementSibling; // won't work, use ID
   document.getElementById('cameraBtn').classList.add('uploading');
   document.getElementById('fileBtn').classList.add('uploading');
 
@@ -562,18 +946,24 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   formData.append('file', file);
 
   try {
-    const res = await fetch('/upload' + (ACCESS_CODE ? '?code=' + ACCESS_CODE : ''), {
-      method: 'POST', body: formData,
+    const res = await fetch('/upload' + (ACCESS_CODE ? `?code=${ACCESS_CODE}` : ''), {
+      method: 'POST',
+      body: formData,
     });
-    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+
     const data = await res.json();
     lastUploadedPath = data.path;
     localStorage.setItem('lastPath', lastUploadedPath);
+
+    // Show paste path button
     document.getElementById('pastePathBtn').style.display = 'flex';
     document.getElementById('lastPathLabel').textContent = file.name;
-    showToast('Uploaded: ' + data.path);
+
+    showToast(`Uploaded: ${data.path}`);
   } catch (err) {
-    showToast('Error: ' + err.message);
+    showToast(`Error: ${err.message}`);
   } finally {
     document.getElementById('cameraBtn').classList.remove('uploading');
     document.getElementById('fileBtn').classList.remove('uploading');
@@ -585,13 +975,92 @@ function pasteLastPath() {
   if (!lastUploadedPath) return;
   socket.emit('input', lastUploadedPath);
   vibrate();
-  showToast('Path pasted');
+  showToast('Path pasted to terminal');
 }
 
+// Restore paste button if we have a last path
 if (lastUploadedPath) {
   document.getElementById('pastePathBtn').style.display = 'flex';
   document.getElementById('lastPathLabel').textContent = 'Last File';
 }
+
+// ==================== Copy ====================
+let selectModeActive = false;
+
+function copySelection() {
+  vibrate();
+  // Toggle select mode
+  if (selectModeActive) {
+    exitSelectMode();
+    return;
+  }
+  const sel = term.getSelection();
+  if (!sel) {
+    enterSelectMode();
+    return;
+  }
+  navigator.clipboard.writeText(sel).then(() => {
+    showToast('Copied: ' + (sel.length > 30 ? sel.substring(0, 30) + '...' : sel));
+    term.clearSelection();
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = sel;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copied: ' + (sel.length > 30 ? sel.substring(0, 30) + '...' : sel));
+    term.clearSelection();
+  });
+}
+
+// ==================== Native Select Mode ====================
+function enterSelectMode() {
+  const buffer = term.buffer.active;
+  const totalRows = buffer.baseY + term.rows;
+  const viewportY = buffer.viewportY;
+  let text = '';
+  for (let i = 0; i < totalRows; i++) {
+    const line = buffer.getLine(i);
+    if (line) {
+      text += line.translateToString(true);
+      if (!line.isWrapped) text += '\n';
+    }
+  }
+  const overlay = document.getElementById('select-overlay');
+  const pre = document.getElementById('select-text');
+  pre.textContent = text;
+  pre.style.fontSize = term.options.fontSize + 'px';
+  overlay.style.display = 'block';
+  // Scroll to match terminal's current viewing position
+  const lineHeight = term.options.fontSize * 1.2;
+  overlay.scrollTop = viewportY * lineHeight;
+  selectModeActive = true;
+  document.getElementById('copySelBtn').style.background = 'var(--primary)';
+  document.getElementById('copySelBtn').style.color = 'white';
+  showToast('Long-press to select text');
+}
+
+function exitSelectMode() {
+  document.getElementById('select-overlay').style.display = 'none';
+  selectModeActive = false;
+  document.getElementById('copySelBtn').style.background = '';
+  document.getElementById('copySelBtn').style.color = '';
+  vibrate();
+}
+
+// Update copy button appearance when selection changes
+term.onSelectionChange(() => {
+  const btn = document.getElementById('copySelBtn');
+  if (term.hasSelection()) {
+    btn.style.borderColor = 'var(--primary)';
+    btn.style.color = 'var(--primary)';
+  } else {
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }
+});
 
 // ==================== Toast ====================
 function showToast(msg) {
@@ -602,102 +1071,473 @@ function showToast(msg) {
 }
 
 // ==================== Resize ====================
+let resizeLocked = false; // Lock resize during keyboard transitions
+
 function handleResize() {
-  if (keyboardOpen || resizeLocked) return;
-  try { fitAddon.fit(); socket.emit('resize', { cols: term.cols, rows: term.rows }); } catch {}
+  if (keyboardOpen || resizeLocked) return; // Don't refit terminal while keyboard is up or transitioning
+  safeFit();
 }
 
-window.addEventListener('resize', () => setTimeout(handleResize, 300));
+let resizeTimer = null;
+function debouncedResize() {
+  if (resizeTimer) clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(handleResize, 500);
+}
+window.addEventListener('resize', debouncedResize);
 screen.orientation?.addEventListener?.('change', () => setTimeout(handleResize, 500));
 
-// ==================== iOS Keyboard Handling ====================
-// Lock app height so keyboard can't push layout
-const lockedHeight = window.innerHeight;
-const appEl = document.getElementById('app');
-appEl.style.height = lockedHeight + 'px';
-appEl.style.maxHeight = lockedHeight + 'px';
-
+// Keyboard open/close
 const controls = document.getElementById('controls');
-const textInput = document.getElementById('textInput');
-const inputBar = document.getElementById('input-bar');
-const sendBtn = document.getElementById('sendBtn');
 
-// Prevent xterm textarea from getting focus (no keyboard on terminal tap)
+let keyboardOpen = false;
+
+// Lock app height on load so iOS can never resize it
+const lockedHeight = window.innerHeight;
+document.getElementById('app').style.height = lockedHeight + 'px';
+document.getElementById('app').style.maxHeight = lockedHeight + 'px';
+document.getElementById('app').style.overflow = 'hidden';
+
+// xterm textarea — prevent focus (terminal is view-only on mobile)
 const xtermTextarea = termContainer.querySelector('textarea');
 if (xtermTextarea) {
   xtermTextarea.addEventListener('focus', () => xtermTextarea.blur());
 }
 
-// Focus with preventScroll to stop iOS from pushing viewport
-textInput.addEventListener('touchstart', (e) => {
-  if (document.activeElement !== textInput) {
+const hiddenInput = document.getElementById('hiddenInput');
+const textDisplay = document.getElementById('textDisplay');
+const inputBar = document.getElementById('input-bar');
+const appEl = document.getElementById('app');
+
+function focusHiddenInput() {
+  hiddenInput.focus({ preventScroll: true });
+  vibrate();
+}
+
+// Show/hide placeholder based on input content
+hiddenInput.addEventListener('input', () => {
+  textDisplay.textContent = hiddenInput.value ? '' : 'Tap Send to type...';
+});
+
+// ==================== iOS Keyboard Handling ====================
+// Problem: iOS Safari pushes the visual viewport up when focusing a bottom input,
+//          causing the entire terminal to shift/disappear.
+// Solution: focus({ preventScroll: true }) prevents iOS from scrolling the viewport.
+//           visualViewport API repositions input-bar above the keyboard.
+//           Long-press spacebar cursor movement works because we only intercept
+//           the initial tap (not subsequent touches on an already-focused input).
+
+hiddenInput.addEventListener('touchstart', (e) => {
+  if (document.activeElement !== hiddenInput) {
     e.preventDefault();
-    textInput.focus({ preventScroll: true });
+    hiddenInput.focus({ preventScroll: true });
   }
 }, { passive: false });
 
-textInput.addEventListener('focus', () => {
+function syncViewport() {
+  const vv = window.visualViewport;
+  if (!vv || !keyboardOpen) return;
+  inputBar.style.bottom = (lockedHeight - vv.height) + 'px';
+}
+
+hiddenInput.addEventListener('focus', () => {
   keyboardOpen = true;
   resizeLocked = true;
   controls.style.visibility = 'hidden';
-  syncInputBar();
+  textDisplay.style.borderColor = 'var(--primary)';
+  syncViewport();
 });
 
-textInput.addEventListener('blur', () => {
+hiddenInput.addEventListener('blur', () => {
   keyboardOpen = false;
   inputBar.style.bottom = '0';
   controls.style.visibility = '';
+  textDisplay.style.borderColor = '';
   setTimeout(() => { resizeLocked = false; }, 600);
 });
 
-// Position input bar above keyboard
-function syncInputBar() {
-  if (!window.visualViewport || !keyboardOpen) return;
-  inputBar.style.bottom = (lockedHeight - window.visualViewport.height) + 'px';
-}
-
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', syncInputBar);
-  window.visualViewport.addEventListener('scroll', syncInputBar);
+  window.visualViewport.addEventListener('resize', syncViewport);
+  window.visualViewport.addEventListener('scroll', syncViewport);
 }
 
-// Send button — prevent blur
-sendBtn.addEventListener('touchstart', (e) => {
+// Prevent Send button from blurring hidden input
+document.querySelector('.send-btn').addEventListener('touchstart', (e) => {
   e.preventDefault();
   sendTextInput();
 }, { passive: false });
 
-sendBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  sendTextInput();
-});
-
+// ==================== Text Input ====================
 function sendTextInput() {
-  const text = textInput.value;
+  const text = hiddenInput.value;
   if (text) {
     socket.emit('input', text + '\r');
-    textInput.value = '';
+    hiddenInput.value = '';
+    textDisplay.textContent = 'Tap Send to type...';
     vibrate();
-    textInput.focus({ preventScroll: true });
+    hiddenInput.focus({ preventScroll: true });
+    autoScroll = true; // Re-enable auto-scroll on send
   } else {
-    textInput.focus({ preventScroll: true });
+    focusHiddenInput();
   }
 }
 
-textInput.addEventListener('keydown', (e) => {
+// Enter key sends text
+hiddenInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     sendTextInput();
   }
 });
 
+// ==================== Chibi Office View ====================
+let officeActive = false;
+let officeAnimId = null;
+let officeFrame = 0;
+let officeW, officeH, officeDpr;
+let officeCanvas, officeCtx;
+
+// Terminal states — will be driven by real terminal output detection
+const termStates = { 1: 'idle', 2: 'idle' };
+// Mini terminal lines — will be fed from real output buffer
+const termLines = {
+  1: ['$ claude --dangerously-skip', '> Waiting for input...'],
+  2: ['$ npm start', '> Server running on :3777'],
+};
+const MAX_MINI_LINES = 6;
+
+function toggleView() {
+  officeActive = !officeActive;
+  const termEl = document.getElementById('terminal-container');
+  const officeEl = document.getElementById('pixel-view');
+  const btn = document.getElementById('viewToggleBtn');
+
+  if (officeActive) {
+    termEl.style.display = 'none';
+    officeEl.style.display = 'block';
+    btn.classList.add('active');
+    initOffice();
+    startOfficeLoop();
+  } else {
+    termEl.style.display = '';
+    officeEl.style.display = 'none';
+    btn.classList.remove('active');
+    if (officeAnimId) cancelAnimationFrame(officeAnimId);
+    // Scroll to bottom — multiple delays to catch history that arrives late
+    setTimeout(() => term.scrollToBottom(), 50);
+    setTimeout(() => term.scrollToBottom(), 300);
+    setTimeout(() => term.scrollToBottom(), 800);
+  }
+}
+
+function initOffice() {
+  officeCanvas = document.getElementById('office-canvas');
+  officeCtx = officeCanvas.getContext('2d');
+  officeDpr = window.devicePixelRatio || 1;
+  const rect = officeCanvas.parentElement.getBoundingClientRect();
+  officeW = rect.width;
+  officeH = rect.height;
+  officeCanvas.width = officeW * officeDpr;
+  officeCanvas.height = officeH * officeDpr;
+  officeCanvas.style.width = officeW + 'px';
+  officeCanvas.style.height = officeH + 'px';
+  officeCtx.setTransform(officeDpr, 0, 0, officeDpr, 0, 0);
+}
+
+// ---- Drawing Helpers ----
+function oRoundRect(x, y, w, h, r) {
+  officeCtx.beginPath();
+  officeCtx.moveTo(x + r, y);
+  officeCtx.lineTo(x + w - r, y);
+  officeCtx.quadraticCurveTo(x + w, y, x + w, y + r);
+  officeCtx.lineTo(x + w, y + h - r);
+  officeCtx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  officeCtx.lineTo(x + r, y + h);
+  officeCtx.quadraticCurveTo(x, y + h, x, y + h - r);
+  officeCtx.lineTo(x, y + r);
+  officeCtx.quadraticCurveTo(x, y, x + r, y);
+  officeCtx.closePath();
+}
+function oFillRR(x, y, w, h, r, c) { officeCtx.fillStyle = c; oRoundRect(x, y, w, h, r); officeCtx.fill(); }
+function oCircle(cx, cy, r, c) { officeCtx.fillStyle = c; officeCtx.beginPath(); officeCtx.arc(cx, cy, r, 0, Math.PI * 2); officeCtx.fill(); }
+
+// ---- Office Background ----
+function drawOfficeBg() {
+  const c = officeCtx;
+  c.fillStyle = '#1e1e38'; c.fillRect(0, 0, officeW, officeH * 0.55);
+  c.fillStyle = '#252545'; c.fillRect(0, officeH * 0.55, officeW, officeH * 0.45);
+  c.strokeStyle = '#2d2d50'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, officeH * 0.55); c.lineTo(officeW, officeH * 0.55); c.stroke();
+
+  // Window
+  const ww = officeW * 0.2, wh = officeH * 0.15, wx = officeW * 0.5 - ww / 2, wy = officeH * 0.08;
+  oFillRR(wx, wy, ww, wh, 4, '#0f172a');
+  c.strokeStyle = '#475569'; c.lineWidth = 2; oRoundRect(wx, wy, ww, wh, 4); c.stroke();
+  oCircle(wx + ww * 0.2, wy + wh * 0.3, 2, '#fde68a');
+  oCircle(wx + ww * 0.7, wy + wh * 0.5, 1.5, '#fde68a');
+  oCircle(wx + ww * 0.8, wy + wh * 0.25, 4, '#fde68a');
+
+  // Clock
+  const clkX = officeW * 0.15, clkY = officeH * 0.12;
+  oCircle(clkX, clkY, 12, '#1e293b');
+  c.strokeStyle = '#475569'; c.lineWidth = 1.5; c.beginPath(); c.arc(clkX, clkY, 12, 0, Math.PI * 2); c.stroke();
+  const now = Date.now() / 1000;
+  c.strokeStyle = '#e2e8f0'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(clkX, clkY); c.lineTo(clkX + Math.cos(now * 0.1) * 7, clkY + Math.sin(now * 0.1) * 7); c.stroke();
+  c.beginPath(); c.moveTo(clkX, clkY); c.lineTo(clkX + Math.cos(now * 0.8) * 9, clkY + Math.sin(now * 0.8) * 9); c.stroke();
+
+  // Poster
+  const px = officeW * 0.78, py = officeH * 0.06;
+  oFillRR(px, py, officeW * 0.12, officeH * 0.14, 3, '#2d2d50');
+  c.fillStyle = '#8b5cf6'; c.font = 'bold 8px sans-serif'; c.textAlign = 'center';
+  c.fillText('KEEP', px + officeW * 0.06, py + officeH * 0.05);
+  c.fillText('CODING', px + officeW * 0.06, py + officeH * 0.09);
+}
+
+// ---- Desk & Monitor ----
+function drawDesk(x, y, w, h) {
+  officeCtx.fillStyle = 'rgba(0,0,0,0.15)'; officeCtx.fillRect(x + 3, y + h - 2, w, 6);
+  oFillRR(x, y, w, h, 3, '#5c3d1e'); oFillRR(x, y, w, h * 0.3, 3, '#7a5230');
+  officeCtx.fillStyle = '#5c3d1e'; officeCtx.fillRect(x + 4, y + h, 4, 12); officeCtx.fillRect(x + w - 8, y + h, 4, 12);
+}
+
+function drawMonitor(x, y, w, h, state, lines) {
+  const c = officeCtx;
+  oFillRR(x, y, w, h, 4, '#334155'); oFillRR(x + 3, y + 3, w - 6, h - 8, 2, '#0a0a15');
+  c.fillStyle = '#475569'; c.fillRect(x + w/2 - 4, y + h, 8, 6); c.fillRect(x + w/2 - 8, y + h + 5, 16, 3);
+
+  const sx = x + 5, sy = y + 5, sw = w - 10, sh = h - 12;
+  c.save(); c.beginPath(); c.rect(sx, sy, sw, sh); c.clip();
+  if (state === 'error') { c.fillStyle = 'rgba(239,68,68,0.1)'; c.fillRect(sx, sy, sw, sh); }
+  const lineH = 7, maxL = Math.floor(sh / lineH), vis = lines.slice(-maxL);
+  c.font = '5px monospace'; c.textAlign = 'left';
+  vis.forEach((l, i) => { c.fillStyle = state === 'error' ? '#ef4444' : '#10b981'; c.fillText(l, sx + 2, sy + 6 + i * lineH); });
+  if (state === 'waiting' && Math.sin(officeFrame * 0.15) > 0) { c.fillStyle = '#10b981'; c.fillRect(sx + 2, sy + 6 + vis.length * lineH - 4, 4, 6); }
+  if (state === 'busy' && officeFrame % 4 === 0) {
+    c.fillStyle = '#10b981'; const chars = '{}[]<>=;:./\\|@#$%&*+-_~^'; let rl = '';
+    for (let j = 0; j < 12; j++) rl += chars[Math.floor(Math.random() * chars.length)];
+    const sl = sy + 6 + vis.length * lineH; if (sl < sy + sh) c.fillText(rl, sx + 2, sl);
+  }
+  c.restore();
+}
+
+// ---- Bunny (Terminal 1) ----
+function drawBunny(cx, cy, s, state) {
+  const c = officeCtx;
+  const bob = state === 'busy' ? Math.sin(officeFrame * 0.3) * 2 : Math.sin(officeFrame * 0.05) * 1;
+  const by = cy + bob;
+  c.fillStyle = 'rgba(0,0,0,0.15)'; c.beginPath(); c.ellipse(cx, cy + 22*s, 14*s, 4*s, 0, 0, Math.PI*2); c.fill();
+  // Body
+  oFillRR(cx-12*s, by-2*s, 24*s, 20*s, 6*s, '#8b5cf6');
+  oFillRR(cx-7*s, by+10*s, 14*s, 6*s, 3*s, '#7c3aed');
+  // Arms
+  const aa = state === 'busy' ? Math.sin(officeFrame * 0.4) * 0.3 : 0;
+  c.save(); c.translate(cx-13*s, by+4*s); c.rotate(-0.3+aa); oFillRR(-3*s, 0, 6*s, 14*s, 3*s, '#8b5cf6'); oCircle(0, 14*s, 3*s, '#f0e6ff'); c.restore();
+  c.save(); c.translate(cx+13*s, by+4*s); c.rotate(0.3-aa); oFillRR(-3*s, 0, 6*s, 14*s, 3*s, '#8b5cf6'); oCircle(0, 14*s, 3*s, '#f0e6ff'); c.restore();
+  // Head
+  const hy = by - 18*s;
+  oCircle(cx, hy, 14*s, '#f0e6ff');
+  // Ears
+  const et = state === 'waiting' ? 0.3 : 0;
+  c.save(); c.translate(cx-7*s, hy-12*s); c.rotate(-0.15-et); oFillRR(-4*s,-20*s,8*s,22*s,4*s,'#f0e6ff'); oFillRR(-2.5*s,-17*s,5*s,16*s,2.5*s,'#ffb3c6'); c.restore();
+  c.save(); c.translate(cx+7*s, hy-12*s); c.rotate(0.15+et); oFillRR(-4*s,-20*s,8*s,22*s,4*s,'#f0e6ff'); oFillRR(-2.5*s,-17*s,5*s,16*s,2.5*s,'#ffb3c6'); c.restore();
+  if (state === 'error') { c.strokeStyle='#ef4444'; c.lineWidth=1.5; c.beginPath(); c.moveTo(cx-5*s,hy-28*s); c.quadraticCurveTo(cx,hy-35*s,cx+5*s,hy-28*s); c.stroke(); }
+  // Face
+  if (state === 'idle') {
+    c.strokeStyle='#1e293b'; c.lineWidth=1.5; c.beginPath(); c.arc(cx-5*s,hy-1*s,2.5*s,0,Math.PI); c.stroke();
+    c.beginPath(); c.arc(cx+5*s,hy-1*s,2.5*s,0,Math.PI); c.stroke();
+    c.fillStyle='#94a3b8'; c.textAlign='left'; const zo = Math.sin(officeFrame*0.08)*3;
+    c.globalAlpha=0.6+Math.sin(officeFrame*0.1)*0.3;
+    c.font=`bold ${8*s}px sans-serif`; c.fillText('z',cx+16*s,hy-12*s+zo);
+    c.font=`bold ${10*s}px sans-serif`; c.fillText('z',cx+22*s,hy-20*s+zo);
+    c.font=`bold ${12*s}px sans-serif`; c.fillText('Z',cx+28*s,hy-28*s+zo);
+    c.globalAlpha=1;
+  } else {
+    const es = state === 'waiting' ? 3.5 : 3;
+    oCircle(cx-5*s,hy-1*s,es*s,'#1e293b'); oCircle(cx+5*s,hy-1*s,es*s,'#1e293b');
+    oCircle(cx-4*s,hy-2.5*s,1.2*s,'#fff'); oCircle(cx+6*s,hy-2.5*s,1.2*s,'#fff');
+    if (state==='waiting') { oCircle(cx-4*s,hy-0.5*s,1.5*s,'#8b5cf6'); oCircle(cx+6*s,hy-0.5*s,1.5*s,'#8b5cf6'); }
+  }
+  c.globalAlpha=0.4; oCircle(cx-9*s,hy+3*s,3*s,'#fca5a5'); oCircle(cx+9*s,hy+3*s,3*s,'#fca5a5'); c.globalAlpha=1;
+  c.fillStyle='#ffb3c6'; c.beginPath(); c.moveTo(cx,hy+2*s); c.lineTo(cx-2*s,hy+4*s); c.lineTo(cx+2*s,hy+4*s); c.closePath(); c.fill();
+  if (state==='error') { c.strokeStyle='#1e293b'; c.lineWidth=1; c.beginPath(); c.arc(cx,hy+8*s,3*s,Math.PI,0); c.stroke(); }
+  if (state==='busy') { c.strokeStyle='#1e293b'; c.lineWidth=1.2; c.beginPath(); c.moveTo(cx-3*s,hy+6*s); c.lineTo(cx+3*s,hy+6*s); c.stroke(); }
+  if (state==='busy' && Math.sin(officeFrame*0.15)>0) { c.fillStyle='#7dd3fc'; c.beginPath(); c.moveTo(cx+14*s,hy-6*s); c.quadraticCurveTo(cx+17*s,hy-2*s,cx+14*s,hy+2*s); c.quadraticCurveTo(cx+11*s,hy-2*s,cx+14*s,hy-6*s); c.fill(); }
+  if (state==='error') { c.globalAlpha=0.3+Math.sin(officeFrame*0.1)*0.2; oCircle(cx-10*s,hy-32*s+Math.sin(officeFrame*0.07)*5,5*s,'#94a3b8'); oCircle(cx+8*s,hy-36*s+Math.cos(officeFrame*0.09)*4,4*s,'#94a3b8'); c.globalAlpha=1; }
+  if (state==='waiting') { const qf=Math.sin(officeFrame*0.08)*4; c.fillStyle='#f59e0b'; c.font=`bold ${14*s}px sans-serif`; c.textAlign='center'; c.fillText('?',cx,hy-32*s+qf); }
+  c.fillStyle='#94a3b8'; c.font=`${9*s}px sans-serif`; c.textAlign='center'; c.fillText('Terminal 1',cx,cy+30*s);
+}
+
+// ---- Cat (Terminal 2) ----
+function drawCat(cx, cy, s, state) {
+  const c = officeCtx;
+  const bob = state === 'busy' ? Math.sin(officeFrame*0.25+1)*2 : Math.sin(officeFrame*0.04)*1;
+  const by = cy + bob;
+  c.fillStyle='rgba(0,0,0,0.15)'; c.beginPath(); c.ellipse(cx,cy+22*s,14*s,4*s,0,0,Math.PI*2); c.fill();
+  // Tail
+  c.strokeStyle='#f59e0b'; c.lineWidth=4*s; c.lineCap='round';
+  const tw = state==='busy' ? Math.sin(officeFrame*0.2)*15 : Math.sin(officeFrame*0.05)*5;
+  c.beginPath(); c.moveTo(cx+12*s,by+8*s); c.quadraticCurveTo(cx+22*s,by+tw*0.5,cx+18*s+tw*0.3,by-10*s); c.stroke();
+  // Body
+  oFillRR(cx-12*s,by-2*s,24*s,20*s,6*s,'#f59e0b'); oFillRR(cx-6*s,by+4*s,12*s,12*s,4*s,'#fde68a');
+  // Arms
+  const aa = state==='busy' ? Math.sin(officeFrame*0.35+0.5)*0.3 : 0;
+  c.save(); c.translate(cx-13*s,by+4*s); c.rotate(-0.3+aa); oFillRR(-3*s,0,6*s,14*s,3*s,'#f59e0b'); oCircle(0,14*s,3*s,'#f59e0b'); c.restore();
+  c.save(); c.translate(cx+13*s,by+4*s); c.rotate(0.3-aa); oFillRR(-3*s,0,6*s,14*s,3*s,'#f59e0b'); oCircle(0,14*s,3*s,'#f59e0b'); c.restore();
+  // Head
+  const hy = by-18*s;
+  oCircle(cx,hy,14*s,'#f59e0b');
+  // Ears
+  c.fillStyle='#f59e0b';
+  c.beginPath(); c.moveTo(cx-13*s,hy-6*s); c.lineTo(cx-9*s,hy-20*s); c.lineTo(cx-2*s,hy-8*s); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(cx+13*s,hy-6*s); c.lineTo(cx+9*s,hy-20*s); c.lineTo(cx+2*s,hy-8*s); c.closePath(); c.fill();
+  c.fillStyle='#ffb3c6';
+  c.beginPath(); c.moveTo(cx-11*s,hy-8*s); c.lineTo(cx-9*s,hy-17*s); c.lineTo(cx-4*s,hy-9*s); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(cx+11*s,hy-8*s); c.lineTo(cx+9*s,hy-17*s); c.lineTo(cx+4*s,hy-9*s); c.closePath(); c.fill();
+  // Stripes
+  c.strokeStyle='#d97706'; c.lineWidth=1.5*s; c.beginPath();
+  c.moveTo(cx-3*s,hy-12*s); c.lineTo(cx-5*s,hy-8*s); c.moveTo(cx,hy-13*s); c.lineTo(cx,hy-9*s); c.moveTo(cx+3*s,hy-12*s); c.lineTo(cx+5*s,hy-8*s); c.stroke();
+  // Headphones
+  c.strokeStyle='#64748b'; c.lineWidth=2.5*s; c.beginPath(); c.arc(cx,hy-5*s,15*s,Math.PI*1.15,Math.PI*1.85); c.stroke();
+  oFillRR(cx-17*s,hy-4*s,6*s,10*s,3*s,'#64748b'); oFillRR(cx+11*s,hy-4*s,6*s,10*s,3*s,'#64748b');
+  // Face
+  if (state==='idle') {
+    c.strokeStyle='#1e293b'; c.lineWidth=1.5; c.beginPath(); c.arc(cx-5*s,hy,2.5*s,0,Math.PI); c.stroke();
+    c.beginPath(); c.arc(cx+5*s,hy,2.5*s,0,Math.PI); c.stroke();
+    oFillRR(cx+14*s,hy-24*s,22*s,16*s,6*s,'rgba(255,255,255,0.9)');
+    c.fillStyle='#64748b'; c.font=`bold ${9*s}px sans-serif`; c.textAlign='center'; c.fillText('zzZ',cx+25*s,hy-14*s);
+    oCircle(cx+14*s,hy-10*s,2*s,'rgba(255,255,255,0.9)'); oCircle(cx+12*s,hy-6*s,1.5*s,'rgba(255,255,255,0.8)');
+  } else {
+    const ew=state==='waiting'?4:3.5, eh=state==='waiting'?4.5:3.5;
+    c.fillStyle='#fde68a'; c.beginPath(); c.ellipse(cx-5*s,hy,ew*s,eh*s,0,0,Math.PI*2); c.fill();
+    c.beginPath(); c.ellipse(cx+5*s,hy,ew*s,eh*s,0,0,Math.PI*2); c.fill();
+    c.fillStyle='#1e293b'; c.beginPath(); c.ellipse(cx-5*s,hy,1.2*s,eh*0.8*s,0,0,Math.PI*2); c.fill();
+    c.beginPath(); c.ellipse(cx+5*s,hy,1.2*s,eh*0.8*s,0,0,Math.PI*2); c.fill();
+    oCircle(cx-4*s,hy-1.5*s,1*s,'#fff'); oCircle(cx+6*s,hy-1.5*s,1*s,'#fff');
+  }
+  c.fillStyle='#ffb3c6'; c.beginPath(); c.moveTo(cx,hy+3*s); c.lineTo(cx-2*s,hy+5*s); c.lineTo(cx+2*s,hy+5*s); c.closePath(); c.fill();
+  // Whiskers
+  c.strokeStyle='#d4d4d4'; c.lineWidth=0.8;
+  [-1,1].forEach(sd => { for(let i=-1;i<=1;i++) { c.beginPath(); c.moveTo(cx+sd*5*s,hy+4*s+i*2*s); c.lineTo(cx+sd*18*s,hy+3*s+i*3*s); c.stroke(); } });
+  c.globalAlpha=0.35; oCircle(cx-9*s,hy+4*s,3*s,'#fca5a5'); oCircle(cx+9*s,hy+4*s,3*s,'#fca5a5'); c.globalAlpha=1;
+  if (state==='busy') { c.globalAlpha=0.3+Math.sin(officeFrame*0.2)*0.2; oCircle(cx-14*s,hy+1*s,4*s,'#10b981'); oCircle(cx+14*s,hy+1*s,4*s,'#10b981'); c.globalAlpha=1; }
+  if (state==='error') {
+    c.globalAlpha=0.3+Math.sin(officeFrame*0.08)*0.2; oCircle(cx-8*s,hy-26*s+Math.sin(officeFrame*0.06)*5,4*s,'#94a3b8'); oCircle(cx+6*s,hy-30*s+Math.cos(officeFrame*0.08)*4,3*s,'#94a3b8'); c.globalAlpha=1;
+    c.strokeStyle='#ef4444'; c.lineWidth=1.2;
+    [-1,1].forEach(sd => { const ex=cx+sd*5*s; c.beginPath(); for(let a=0;a<Math.PI*3;a+=0.2){const r=a*0.6*s; c.lineTo(ex+Math.cos(a+officeFrame*0.1)*r,hy+Math.sin(a+officeFrame*0.1)*r);} c.stroke(); });
+  }
+  if (state==='waiting') { const pf=Math.sin(officeFrame*0.1)*2; c.fillStyle='#f59e0b'; c.font=`${10*s}px sans-serif`; c.textAlign='center'; c.fillText('\u{1F44B}',cx+18*s,hy+pf); }
+  const catLabel = sessionList.length >= 2 ? 'Terminal 2' : 'Tap to create';
+  c.fillStyle = sessionList.length >= 2 ? '#94a3b8' : '#64748b';
+  c.font=`${9*s}px sans-serif`; c.textAlign='center'; c.fillText(catLabel,cx,cy+30*s);
+}
+
+// ---- Detect terminal state from output (multi-session) ----
+const promptPattern = /[$>❯]\s*$/;
+const errorPattern = /error|Error|FAIL|ECONNREFUSED|ENOENT|panic/;
+const lastRealOutputTimes = {};
+
+function updateOfficeOutput(data, sessionId) {
+  const idx = sessionId || 1;
+  if (idx > 2) return; // Only track first 2 sessions for office view
+
+  const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '').replace(/\r/g, '');
+  const visible = clean.replace(/\s/g, '');
+
+  if (visible.length > 2) {
+    lastRealOutputTimes[idx] = Date.now();
+    const newLines = clean.split('\n').filter(l => l.trim());
+    if (newLines.length) {
+      if (!termLines[idx]) termLines[idx] = [];
+      termLines[idx].push(...newLines);
+      if (termLines[idx].length > MAX_MINI_LINES) termLines[idx] = termLines[idx].slice(-MAX_MINI_LINES);
+    }
+    if (errorPattern.test(clean)) { termStates[idx] = 'error'; }
+    else if (promptPattern.test(clean)) { termStates[idx] = 'waiting'; }
+    else { termStates[idx] = 'busy'; }
+  }
+}
+
+function checkIdle() {
+  [1, 2].forEach(idx => {
+    if (Date.now() - (lastRealOutputTimes[idx] || 0) > 3000 && termStates[idx] === 'busy') {
+      termStates[idx] = 'idle';
+    }
+  });
+  // Mark unconnected sessions
+  if (sessionList.length < 2) termStates[2] = 'idle';
+}
+
+// ---- Main Loop ----
+function startOfficeLoop() {
+  function loop() {
+    if (!officeActive) return;
+    officeFrame++;
+    checkIdle();
+    officeCtx.clearRect(0, 0, officeW, officeH);
+    drawOfficeBg();
+
+    const deskW = officeW * 0.3, deskH = 14;
+    const monW = officeW * 0.22, monH = officeH * 0.14;
+    const charScale = Math.min(officeW / 400, officeH / 500) * 1.1;
+    const deskY = officeH * 0.52;
+
+    // Left: Bunny
+    const lx = officeW * 0.27;
+    drawDesk(lx - deskW/2, deskY, deskW, deskH);
+    drawMonitor(lx - monW/2, deskY - monH - 4, monW, monH, termStates[1], termLines[1]);
+    drawBunny(lx, deskY - monH - 10, charScale, termStates[1]);
+
+    // Right: Cat
+    const rx = officeW * 0.73;
+    drawDesk(rx - deskW/2, deskY, deskW, deskH);
+    drawMonitor(rx - monW/2, deskY - monH - 4, monW, monH, termStates[2], termLines[2]);
+    drawCat(rx, deskY - monH - 10, charScale, termStates[2]);
+
+    officeAnimId = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// Tap character to switch terminal / create new session
+document.getElementById('pixel-view').addEventListener('click', (e) => {
+  if (!officeActive) return;
+  const rect = officeCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const lx = officeW * 0.27, rx = officeW * 0.73, charY = officeH * 0.38;
+
+  if (Math.hypot(x - lx, y - charY) < 60) {
+    // Tap bunny → switch to terminal 1
+    const id = sessionList[0]?.id;
+    if (id) {
+      switchSession(id);
+      toggleView(); // Switch back to terminal view
+      showToast('Terminal 1 (Bunny)');
+    }
+    vibrate();
+  } else if (Math.hypot(x - rx, y - charY) < 60) {
+    // Tap cat → switch to terminal 2 (or create if doesn't exist)
+    if (sessionList.length >= 2) {
+      switchSession(sessionList[1].id);
+      toggleView();
+      showToast('Terminal 2 (Cat)');
+    } else {
+      createNewSession();
+      showToast('Creating Terminal 2...');
+      // Wait for session creation then switch to terminal view
+      setTimeout(() => toggleView(), 300);
+    }
+    vibrate();
+  }
+});
+
 // ==================== PWA ====================
 if ('serviceWorker' in navigator) {
-  const swBlob = new Blob([
-    "self.addEventListener('install', () => self.skipWaiting());",
-    "self.addEventListener('activate', () => self.clients.claim());",
-    "self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));"
-  ], { type: 'application/javascript' });
+  // Minimal SW for PWA installability
+  const swBlob = new Blob([`
+    self.addEventListener('install', () => self.skipWaiting());
+    self.addEventListener('activate', () => self.clients.claim());
+    self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
+  `], { type: 'application/javascript' });
   navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
 }
 </script>
