@@ -863,6 +863,10 @@ function switchSession(id) {
 function createNewSession() {
   term.reset(); // Clear old content immediately
   socket.emit('create-session');
+  // Send resize after server attaches us to the new session
+  setTimeout(() => {
+    socket.emit('resize', { cols: term.cols, rows: term.rows });
+  }, 300);
 }
 
 // Close a terminal session
@@ -1554,8 +1558,9 @@ const origAttachedHandler = socket.listeners('attached')[0];
 socket.off('attached', origAttachedHandler);
 socket.on('attached', (id) => {
   currentSessionId = id;
-  // ghost cells handle status display
   socket.emit('sync', getSeq(id), id);
+  // Tell the new PTY our actual terminal size
+  socket.emit('resize', { cols: term.cols, rows: term.rows });
   updateGhostCells();
 });
 
@@ -1826,7 +1831,9 @@ const errorPattern = /error|Error|FAIL|ECONNREFUSED|ENOENT|panic/;
 const lastRealOutputTimes = {};
 
 function updateOfficeOutput(data, sessionId) {
-  const idx = sessionId || 1;
+  // Map session ID to position (1-based) in sessionList
+  const posIdx = sessionList.findIndex(s => s.id === sessionId);
+  const idx = posIdx >= 0 ? posIdx + 1 : 1;
   if (idx > 4) return; // Track up to 4 sessions
 
   const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '').replace(/\r/g, '');
