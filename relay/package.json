@@ -1,0 +1,12 @@
+{
+  "name": "claude-remote-relay",
+  "version": "1.0.0",
+  "description": "Relay server for Claude Remote Control",
+  "main": "relay.js",
+  "scripts": {
+    "start": "node relay.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
