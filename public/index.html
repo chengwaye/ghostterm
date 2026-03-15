@@ -684,7 +684,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- Hidden File Input -->
-<input type="file" id="file-input" accept="image/*,video/*,audio/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css,.zip,.tar,.gz">
+<input type="file" id="file-input" accept="image/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css">
 
 <script>
 // ==================== Config ====================
@@ -1048,7 +1048,7 @@ function pickFile(mode) {
     input.accept = 'image/*';
     input.capture = 'environment';
   } else {
-    input.accept = 'image/*,video/*,audio/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css,.zip,.tar,.gz';
+    input.accept = 'image/*,application/pdf,.txt,.md,.json,.csv,.py,.js,.ts,.html,.css';
     input.removeAttribute('capture');
   }
   input.click();
