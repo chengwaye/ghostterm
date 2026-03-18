@@ -496,6 +496,40 @@
 
   .claude-menu-btn:active .desc { color: rgba(255,255,255,0.7); }
 
+  .numpad-popup {
+    display: none;
+    position: fixed;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    z-index: 1001;
+    gap: 10px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .numpad-popup.visible { display: flex; }
+  .numpad-popup button {
+    width: 60px;
+    height: 60px;
+    border: 1px solid var(--border);
+    border-radius: var(--btn-radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+  }
+  .numpad-popup button:active {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
 /* Select mode overlay */
   #select-overlay {
     display: none;
@@ -561,6 +595,7 @@
       <div class="ghost-cell empty" id="gcell-1" onclick="ghostCellClick(1)">+</div>
       <div class="ghost-cell empty" id="gcell-2" onclick="ghostCellClick(2)">+</div>
       <div class="ghost-cell empty" id="gcell-3" onclick="ghostCellClick(3)">+</div>
+      <button style="width:28px;height:28px;border:1.5px solid #555;border-radius:50%;background:transparent;color:#555;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;align-self:center;margin-left:2px" onclick="closeCurrentSession()" ontouchend="event.preventDefault();closeCurrentSession()">✕</button>
     </div>
     <span class="status-dot" id="statusDot" style="margin-right:4px"></span>
     <div class="header-btns">
@@ -590,8 +625,8 @@
       <button class="qbtn red" onclick="send('n\r')">n</button>
       <button class="qbtn" onclick="send('\x1b[Z')">S+Tab</button>
       <button class="qbtn" onclick="send('/')">/ cmd</button>
-      <button class="qbtn" onclick="send('\t')">Tab</button>
-      <button class="qbtn" onclick="send('\x7f')">Bksp</button>
+      <button class="qbtn" onclick="showNumPad()">12345x</button>
+      <button class="qbtn" id="bkspBtn">←Bksp</button>
     </div>
 
     <!-- D-Pad + Side Buttons -->
@@ -599,7 +634,7 @@
       <div class="side-btns">
         <button class="side-btn" onclick="showClaudeMenu()">claude</button>
         <button class="side-btn red" onclick="send('\x03')">Stop</button>
-        <button class="side-btn amber" onclick="closeCurrentSession()">Close</button>
+        <button class="side-btn" onclick="send('\x1b')">Esc</button>
       </div>
       <div class="side-btns">
         <button class="side-btn" id="pastePathBtn" onclick="pasteLastPath()" style="border-style:dashed;display:none">📋 Paste</button>
@@ -607,21 +642,21 @@
         <button class="side-btn" id="fileBtn" onclick="pickFile('file')" style="border-style:dashed">📁 File</button>
       </div>
       <div class="dpad">
-        <button class="dpad-btn up" onclick="send('\x1b[A')">↑</button>
-        <button class="dpad-btn left" onclick="send('\x1b[D')">←</button>
+        <button class="dpad-btn up" data-repeat="\x1b[A">↑</button>
+        <button class="dpad-btn left" data-repeat="\x1b[D">←</button>
         <button class="dpad-btn center" onclick="send('\r')">Enter</button>
-        <button class="dpad-btn right" onclick="send('\x1b[C')">→</button>
-        <button class="dpad-btn down" onclick="send('\x1b[B')">↓</button>
+        <button class="dpad-btn right" data-repeat="\x1b[C">→</button>
+        <button class="dpad-btn down" data-repeat="\x1b[B">↓</button>
       </div>
       <div class="side-btns">
-        <button class="side-btn" onclick="send('\n')">換行</button>
-        <button class="side-btn" onclick="send(' ')">Space</button>
+        <button class="side-btn" onclick="send('\n')">Line↵</button>
+        <button class="side-btn" data-repeat=" ">Space</button>
         <button class="side-btn" id="copySelBtn" onclick="copySelection()">Copy</button>
       </div>
       <div class="side-btns">
         <button class="side-btn" onclick="autoScroll=true;smartScroll();vibrate()" style="font-size:10px;color:var(--success)">⏬</button>
-        <button class="side-btn" onclick="autoScroll=false;term.scrollLines(-5);vibrate()" style="font-size:15px">▲</button>
-        <button class="side-btn" onclick="term.scrollLines(5);vibrate()" style="font-size:15px">▼</button>
+        <button class="side-btn" data-scroll="-5" style="font-size:15px">▲</button>
+        <button class="side-btn" data-scroll="5" style="font-size:15px">▼</button>
       </div>
     </div>
 
@@ -679,6 +714,17 @@
   </div>
 </div>
 
+
+<!-- Numpad Popup -->
+<div class="backdrop" id="numpadBackdrop" onclick="hideNumPad()" style="display:none"></div>
+<div class="numpad-popup" id="numpadPopup">
+  <button onclick="pickNum('1')">1</button>
+  <button onclick="pickNum('2')">2</button>
+  <button onclick="pickNum('3')">3</button>
+  <button onclick="pickNum('4')">4</button>
+  <button onclick="pickNum('5')">5</button>
+  <button onclick="pickNum('x')">x</button>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -815,7 +861,7 @@ socket.on('delta', (data, seq, id) => {
     lastOutputTime = Date.now();
     term.write(data, () => { if (autoScroll) smartScroll(); });
   }
-  updateGhostCells();
+  if (GT.ghostCells) GT.ghostCells.updateGhostCells();
 });
 
 // Full history
@@ -830,7 +876,7 @@ socket.on('history', (data, seq, id) => {
       setTimeout(() => term.scrollToBottom(), 300);
     });
   }
-  updateGhostCells();
+  if (GT.ghostCells) GT.ghostCells.updateGhostCells();
 });
 
 socket.on('exit', (code, id) => {
@@ -974,6 +1020,93 @@ function claudeRun(flag) {
   socket.emit('input', cmd);
   vibrate();
 }
+
+// ==================== Numpad ====================
+function showNumPad() {
+  vibrate();
+  document.getElementById('numpadPopup').classList.add('visible');
+  document.getElementById('numpadBackdrop').style.display = 'block';
+}
+function hideNumPad() {
+  document.getElementById('numpadPopup').classList.remove('visible');
+  document.getElementById('numpadBackdrop').style.display = 'none';
+}
+function pickNum(n) {
+  vibrate();
+  send(n);
+  hideNumPad();
+}
+
+// ==================== Long-press Repeat ====================
+const _allRepeatStops = [];
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    _allRepeatStops.forEach(fn => fn());
+  }
+});
+
+// Backspace: long-press with acceleration
+(function() {
+  const bksp = document.getElementById('bkspBtn');
+  if (!bksp) return;
+  let timer = null, delay = 200;
+  function startRepeat() {
+    send('\x7f');
+    delay = 200;
+    timer = setTimeout(function repeat() {
+      send('\x7f');
+      delay = Math.max(30, delay * 0.75);
+      timer = setTimeout(repeat, delay);
+    }, delay);
+  }
+  function stopRepeat() { if (timer) { clearTimeout(timer); timer = null; } }
+  bksp.addEventListener('touchstart', (e) => { e.preventDefault(); bksp.classList.add('tapped'); startRepeat(); }, { passive: false });
+  bksp.addEventListener('touchend', () => { stopRepeat(); bksp.classList.remove('tapped'); });
+  bksp.addEventListener('touchcancel', () => { stopRepeat(); bksp.classList.remove('tapped'); });
+  _allRepeatStops.push(() => { stopRepeat(); bksp.classList.remove('tapped'); });
+})();
+
+// D-pad arrows + Space: long-press repeat
+document.querySelectorAll('[data-repeat]').forEach(btn => {
+  let timer = null, delay = 150;
+  const seq = btn.dataset.repeat.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  function startRepeat() {
+    send(seq);
+    delay = 150;
+    timer = setTimeout(function repeat() {
+      send(seq);
+      delay = Math.max(30, delay * 0.8);
+      timer = setTimeout(repeat, delay);
+    }, delay);
+  }
+  function stopRepeat() { if (timer) { clearTimeout(timer); timer = null; } }
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.classList.add('tapped'); startRepeat(); }, { passive: false });
+  btn.addEventListener('touchend', () => { stopRepeat(); btn.classList.remove('tapped'); });
+  btn.addEventListener('touchcancel', () => { stopRepeat(); btn.classList.remove('tapped'); });
+  _allRepeatStops.push(() => { stopRepeat(); btn.classList.remove('tapped'); });
+});
+
+// Scroll buttons: long-press repeat with acceleration
+document.querySelectorAll('[data-scroll]').forEach(btn => {
+  let timer = null, delay = 150;
+  const lines = parseInt(btn.dataset.scroll);
+  function startRepeat() {
+    autoScroll = false;
+    term.scrollLines(lines);
+    vibrate();
+    delay = 150;
+    timer = setTimeout(function repeat() {
+      term.scrollLines(lines);
+      delay = Math.max(30, delay * 0.8);
+      timer = setTimeout(repeat, delay);
+    }, delay);
+  }
+  function stopRepeat() { if (timer) { clearTimeout(timer); timer = null; } }
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.classList.add('tapped'); startRepeat(); }, { passive: false });
+  btn.addEventListener('touchend', () => { stopRepeat(); btn.classList.remove('tapped'); });
+  btn.addEventListener('touchcancel', () => { stopRepeat(); btn.classList.remove('tapped'); });
+  _allRepeatStops.push(() => { stopRepeat(); btn.classList.remove('tapped'); });
+});
 
 // ==================== Auto Scroll Timer ====================
 // Periodically smartScroll while autoScroll is on and terminal is active
@@ -1347,756 +1480,206 @@ hiddenInput.addEventListener('keydown', (e) => {
   }
 });
 
-// Terminal states — shared by ghost cells and office view
-const termStates = { 1: 'idle', 2: 'idle', 3: 'idle', 4: 'idle' };
-
-// ==================== Ghost Header Cells ====================
-const GHOST_COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
-const gcCanvases = [null, null, null, null];
-const gcCtxs = [null, null, null, null];
-let gcAnimId = null;
-let gcFrame = 0;
-
-function initGhostCanvas(i) {
-  const cell = document.getElementById('gcell-' + i);
-  if (!cell) return;
-  cell.classList.remove('empty');
-  cell.innerHTML = '<canvas id="gc-' + i + '"></canvas>';
-  const canvas = document.getElementById('gc-' + i);
-  const dpr = window.devicePixelRatio || 2;
-  const rect = cell.getBoundingClientRect();
-  // Account for border (2px each side)
-  const cw = Math.round(rect.width - 4);
-  const ch = Math.round(rect.height - 4);
-  canvas.width = cw * dpr;
-  canvas.height = ch * dpr;
-  canvas.style.width = cw + 'px';
-  canvas.style.height = ch + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  gcCanvases[i] = canvas;
-  gcCtxs[i] = ctx;
-  // Store logical size for drawing
-  canvas._logicW = cw;
-  canvas._logicH = ch;
-}
-
-// Init first cell (always has session 1)
-initGhostCanvas(0);
-
-function drawGhostCell(idx) {
-  const ctx = gcCtxs[idx];
-  if (!ctx || !gcCanvases[idx]) return;
-  const w = gcCanvases[idx]._logicW || 52;
-  const h = gcCanvases[idx]._logicH || 52;
-  const state = termStates[idx + 1] || 'idle';
-  const color = GHOST_COLORS[idx];
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Background
-  ctx.fillStyle = '#0f0f1a';
-  ctx.fillRect(0, 0, w, h);
-
-  // === Pumpkin sofa (top-center) ===
-  const sofaY = 11;
-  ctx.fillStyle = '#c2410c';
-  ctx.beginPath(); ctx.ellipse(w / 2, sofaY, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#9a3412'; ctx.lineWidth = 0.7;
-  ctx.beginPath(); ctx.moveTo(w / 2, sofaY - 6); ctx.lineTo(w / 2, sofaY + 6); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(w / 2 - 6, sofaY - 5); ctx.quadraticCurveTo(w / 2 - 6, sofaY, w / 2 - 6, sofaY + 5); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(w / 2 + 6, sofaY - 5); ctx.quadraticCurveTo(w / 2 + 6, sofaY, w / 2 + 6, sofaY + 5); ctx.stroke();
-  ctx.fillStyle = '#65a30d';
-  ctx.fillRect(w / 2 - 1, sofaY - 8, 2, 3);
-  ctx.beginPath(); ctx.ellipse(w / 2 + 2, sofaY - 7, 2.5, 1.2, 0.3, 0, Math.PI * 2); ctx.fill();
-
-  // === Desk + Monitor (bottom-right) ===
-  const deskX = 30, deskY = 44;
-  // Desk
-  ctx.fillStyle = '#7a5230'; ctx.fillRect(deskX, deskY, 18, 3);
-  ctx.fillStyle = '#5c3d1e'; ctx.fillRect(deskX + 2, deskY + 3, 2, 5);
-  ctx.fillRect(deskX + 14, deskY + 3, 2, 5);
-  // Monitor on desk
-  const monX = deskX + 3, monY = deskY - 9;
-  ctx.fillStyle = '#334155'; ctx.fillRect(monX, monY, 12, 8);
-  ctx.fillStyle = state === 'busy' ? '#10b981' : (state === 'error' ? '#ef4444' : '#0a0a15');
-  ctx.fillRect(monX + 1, monY + 1, 10, 6);
-  ctx.fillStyle = '#475569'; ctx.fillRect(monX + 4, monY + 8, 4, 1);
-  // Blinking cursor on screen when busy
-  if (state === 'busy' && Math.sin(gcFrame * 0.15) > 0) {
-    ctx.fillStyle = '#10b981'; ctx.fillRect(monX + 2, monY + 4, 3, 1);
+// ==================== GT Namespace Shim ====================
+// Maps GT.xxx references (used by P2P modules) to local variables
+window.GT = window.GT || {};
+GT.state = {
+  get socket() { return socket; },
+  get currentSessionId() { return currentSessionId; },
+  set currentSessionId(v) { currentSessionId = v; },
+  get sessionList() { return sessionList; },
+  set sessionList(v) { sessionList = v; },
+  bufferSeqs: bufferSeqs,
+  get sessionCache() { return typeof sessionCache !== 'undefined' ? sessionCache : {}; },
+  get hasConnectedOnce() { return hasConnectedOnce; },
+  set hasConnectedOnce(v) { hasConnectedOnce = v; },
+  get autoScroll() { return autoScroll; },
+  set autoScroll(v) { autoScroll = v; },
+  get fontSize() { return fontSize; },
+  get lastOutputTime() { return lastOutputTime; },
+  set lastOutputTime(v) { lastOutputTime = v; },
+  lastUserScrollTime: 0,
+  get officeActive() { return typeof officeActive !== 'undefined' ? officeActive : false; },
+  set officeActive(v) { if (typeof officeActive !== 'undefined') officeActive = v; },
+  keyboardOpen: false,
+  controlsCollapsed: false,
+  selectModeActive: false,
+  dangerousMode: dangerousMode,
+  sessionColorSlot: new Map(),
+  nextColorSlot: 0,
+};
+GT.getColorSlot = function(sessionId) {
+  const map = GT.state.sessionColorSlot;
+  const list = GT.state.sessionList;
+  if (!map.has(sessionId)) {
+    const activeIds = new Set(list.map(s => s.id));
+    for (const [id] of map) { if (!activeIds.has(id)) map.delete(id); }
+    const usedSlots = new Set(map.values());
+    let slot = 0;
+    while (usedSlots.has(slot) && slot < 4) slot++;
+    if (slot >= 4) slot = 0;
+    map.set(sessionId, slot);
   }
+  return map.get(sessionId);
+};
+GT.getSeq = function(id) { return getSeq(id); };
+GT.setSeq = function(id, seq) { setSeq(id, seq); };
+GT.terminal = { term: term, safeFit: safeFit, smartScroll: smartScroll };
+GT.ui = { showToast: showToast };
+GT.controls = { vibrate: vibrate };
+GT.sessions = { createNewSession: createNewSession, closeCurrentSession: closeCurrentSession };
 
-  // === Ghost ===
-  let ghostX, ghostY;
-  const floatOffset = Math.sin(gcFrame * 0.06 + idx) * 1.5;
-  const isWorking = state === 'busy' || state === 'error' || state === 'waiting';
+// Shared constants — var so they're visible to ghost-cells.js and office.js (separate script tags)
+var GHOST_COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+var termStates = { 1: 'idle', 2: 'idle', 3: 'idle', 4: 'idle' };
 
-  if (state === 'busy') {
-    ghostX = 14; ghostY = 42 + floatOffset; // Bottom-left, at desk
-  } else if (state === 'waiting') {
-    ghostX = 18; ghostY = 34 + floatOffset; // Middle area
-  } else if (state === 'error') {
-    ghostX = 14; ghostY = 40 + Math.sin(gcFrame * 0.2) * 2; // Bottom-left, shaking
-  } else {
-    ghostX = w / 2; ghostY = 12 + floatOffset; // On sofa (top-center)
-  }
+var prevTermStates = { 1: 'idle', 2: 'idle', 3: 'idle', 4: 'idle' };
+var idleStartTimes = { 1: 0, 2: 0, 3: 0, 4: 0 };
+var lastOutputFrames = { 1: 0, 2: 0, 3: 0, 4: 0 };
+var ghostCurrentPos = [
+  { x: 0, y: 0, initialized: false },
+  { x: 0, y: 0, initialized: false },
+  { x: 0, y: 0, initialized: false },
+  { x: 0, y: 0, initialized: false },
+];
+var ANIM = {
+  HAT_WOBBLE_SPEED: 0.04, HAT_WOBBLE_AMP: 0.08,
+  SCARF_WAVE_SPEED: 0.06, SCARF_WAVE_AMP: 3,
+  TYPING_HAND_SPEED: 0.4, TYPING_HAND_AMP: 2,
+  KEY_PRESS_SPEED: 0.5,
+  CELEBRATE_DURATION: 30, CELEBRATE_JUMP_HEIGHT: 15,
+  CELEBRATE_PARTICLE_COUNT: 12, CELEBRATE_PARTICLE_LIFE: 60,
+  IDLE_CHAT_CHANCE: 0.1, IDLE_CHECK_INTERVAL: 1800,
+  WEATHER_CHANGE_INTERVAL: 18000,
+  LERP_SPEED: 0.05, WALK_TILT_DEG: 5,
+  MOOD_SWEAT_THRESHOLD: 18000, MOOD_TIRED_THRESHOLD: 36000, MOOD_HAPPY_THRESHOLD: 1800,
+  EMOTE_ERROR_DURATION: 180, EMOTE_SUCCESS_DURATION: 120,
+  EMOTE_THINKING_GEAR_SPEED: 0.08, EMOTE_IDLE_WATCH_THRESHOLD: 900,
+  COFFEE_IDLE_THRESHOLD: 1200, COFFEE_CHECK_INTERVAL: 300, COFFEE_TRIGGER_CHANCE: 0.10,
+  COFFEE_RUSH_BUSY_THRESHOLD: 18000,
+  COFFEE_PHASE_WALK: 0, COFFEE_PHASE_PICKUP: 1, COFFEE_PHASE_DRINK: 2,
+  COFFEE_PHASE_PUTDOWN: 3, COFFEE_PHASE_RETURN: 4, COFFEE_PHASE_STARS: 5,
+  PAPER_IDLE_THRESHOLD: 600, PAPER_CHECK_INTERVAL: 600, PAPER_TRIGGER_CHANCE: 0.15,
+  PAPER_GRAVITY: 0.06, PAPER_SIZE: 4, PAPER_CATCH_CHANCE: 0.5,
+  PAPER_HIT_CHANCE: 0.3, PAPER_TRASH_CHANCE: 0.2, PAPER_MAX_VOLLEYS: 2,
+  CAT_W: 6, CAT_H: 4, CAT_BEHAVIOR_MIN: 300, CAT_BEHAVIOR_MAX: 900,
+  CAT_SPEED: 0.4, CAT_KEYBOARD_DURATION: 180,
+  BADGE_FALL_SPEED: 3, BADGE_FLASH_DURATION: 60, BADGE_MAX_DISPLAY: 4,
+  BADGE_AREA_X_RATIO: 0.82, BADGE_AREA_Y_RATIO: 0.02, BADGE_AREA_W: 52, BADGE_AREA_H: 16,
+  BIRD_SPEED: 0.8, CLOUD_SPEED: 0.15, UFO_CHANCE: 0.0004, UFO_DURATION: 180,
+  LIGHTNING_CHANCE: 0.002, LIGHTNING_FLASH1: 6, LIGHTNING_FLASH2_DELAY: 30, LIGHTNING_FLASH2: 6,
+  RACE_COUNTDOWN_FRAMES: 60, RACE_BASE_SPEED: 1.2, RACE_SPEED_VARIANCE: 0.8, RACE_CROWN_DURATION: 300,
+};
+var MARBLE = {
+  RADIUS: 6, GRAVITY: 0.08, BOUNCE_DECAY: 0.65, FRICTION: 0.995,
+  SPEED_THRESHOLD: 0.8, MAX_PULL: 80, LAUNCH_MULT: 0.25, TRAIL_LEN: 5,
+  FADEOUT_FRAMES: 20, RESPAWN_FRAMES: 30, GHOST_HIT_RADIUS: 15, SHIELD_RADIUS: 25,
+  PUSH_FORCE: 8, SCARED_FRAMES: 120, DAMAGE_FRAMES: 180, REPAIR_FRAMES: 180,
+  SHIELD_FLASH_FRAMES: 18, SLINGSHOT_TOUCH_R: 30, AIM_DASH_LEN: 8, AIM_GAP_LEN: 5,
+  SPARK_LIFE: 15, LAUNCH_PARTICLE_LIFE: 12,
+};
 
-  // Ghost glow when busy
-  if (state === 'busy') {
-    ctx.globalAlpha = 0.12 + Math.sin(gcFrame * 0.1) * 0.08;
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(ghostX, ghostY, 12, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
-  }
+// Export to GT namespace
+GT.GHOST_COLORS = GHOST_COLORS;
+GT.termStates = termStates;
+GT.prevTermStates = prevTermStates;
+GT.idleStartTimes = idleStartTimes;
+GT.lastOutputFrames = lastOutputFrames;
+GT.ghostCurrentPos = ghostCurrentPos;
+GT.ANIM = ANIM;
+GT.MARBLE = MARBLE;
 
-  // Ghost body
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(ghostX, ghostY - 2, 8, Math.PI, 0);
-  ctx.lineTo(ghostX + 8, ghostY + 6);
-  const wp = gcFrame * 0.1 + idx;
-  for (let i = 0; i < 3; i++) {
-    const wx = ghostX + 8 - (i + 1) * 5.3;
-    const wy = ghostY + 6 + Math.sin(wp + i * 1.5) * 1.5;
-    ctx.quadraticCurveTo(wx + 1.3, wy + 1.5, wx - 1.3, wy);
-  }
-  ctx.lineTo(ghostX - 8, ghostY - 2);
-  ctx.closePath();
-  ctx.fill();
+// Office state (used by office.js)
+var officeActive = false;
+GT.state.officeActive = false;
+// Provide officeActive getter/setter
+Object.defineProperty(GT.state, 'officeActive', {
+  get() { return officeActive; },
+  set(v) { officeActive = v; },
+  configurable: true,
+});
 
-  // Arms — tiny hands reaching toward monitor only when busy or error
-  if (state === 'busy' || state === 'error') {
-    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-    const armWiggle = state === 'busy' ? Math.sin(gcFrame * 0.3 + idx) * 1.5 : 0;
-    // Right arm — reaching toward monitor
-    ctx.beginPath();
-    ctx.moveTo(ghostX + 6, ghostY + 2);
-    ctx.quadraticCurveTo(ghostX + 14, ghostY + armWiggle, monX - 1, monY + 5 + armWiggle);
-    ctx.stroke();
-    // Left arm — also reaching
-    ctx.beginPath();
-    ctx.moveTo(ghostX + 5, ghostY + 4);
-    ctx.quadraticCurveTo(ghostX + 12, ghostY + 6 + armWiggle, monX - 1, monY + 8 + armWiggle);
-    ctx.stroke();
-    // Tiny hands (circles at fingertips)
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(monX - 1, monY + 5 + armWiggle, 1.2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(monX - 1, monY + 8 + armWiggle, 1.2, 0, Math.PI * 2); ctx.fill();
-  }
+// Session cache for ghost cells
+var sessionCache = {};
+Object.defineProperty(GT.state, 'sessionCache', {
+  get() { return sessionCache; },
+  configurable: true,
+});
 
-  // Eyes — face right when working, center when idle
-  const eyeCx = isWorking ? ghostX + 1 : ghostX;
-  if (state === 'idle') {
-    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(eyeCx - 3, ghostY - 1, 1.5, 0, Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.arc(eyeCx + 3, ghostY - 1, 1.5, 0, Math.PI); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.globalAlpha = 0.5 + Math.sin(gcFrame * 0.1) * 0.3;
-    ctx.font = 'bold 5px sans-serif'; ctx.textAlign = 'left';
-    const zo = Math.sin(gcFrame * 0.08) * 2;
-    ctx.fillText('z', ghostX + 8, ghostY - 6 + zo);
-    ctx.font = 'bold 7px sans-serif';
-    ctx.fillText('Z', ghostX + 11, ghostY - 10 + zo);
-    ctx.globalAlpha = 1;
-  } else {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(eyeCx - 2, ghostY - 2, 2.2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(eyeCx + 3, ghostY - 2, 2.2, 0, Math.PI * 2); ctx.fill();
-    // Pupils look toward desk (right) when working
-    const pupOff = isWorking ? 0.8 : 0;
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath(); ctx.arc(eyeCx - 2 + pupOff, ghostY - 1.5, 1, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(eyeCx + 3 + pupOff, ghostY - 1.5, 1, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // State indicators
-  if (state === 'error') {
-    ctx.fillStyle = '#ef4444'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('!', ghostX, ghostY - 12 + Math.sin(gcFrame * 0.15) * 1);
-  }
-  if (state === 'waiting') {
-    const qBob = Math.sin(gcFrame * 0.08) * 2;
-    ctx.save();
-    ctx.translate(ghostX + 14, ghostY - 7 + qBob);
-    ctx.rotate(Math.PI / 12); // 15 degrees tilted to the right
-    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('?', 0, 0);
-    ctx.restore();
-  }
-
-}
-
-// Update ghost cells to match session list — full rebuild every time
-function updateGhostCells() {
-  for (let i = 0; i < 4; i++) {
-    const cell = document.getElementById('gcell-' + i);
-    if (!cell) continue;
-    const hasSession = i < sessionList.length && !sessionList[i].exited;
-    if (hasSession) {
-      if (!gcCtxs[i]) initGhostCanvas(i);
-      // New session should start as 'waiting', not 'idle'
-      if (termStates[i + 1] === 'idle' && !lastRealOutputTimes[i + 1]) {
-        termStates[i + 1] = 'waiting';
-      }
-    } else {
-      // No session — show +
-      if (!cell.classList.contains('empty')) {
-        cell.classList.add('empty');
-        cell.innerHTML = '+';
-        gcCanvases[i] = null;
-        gcCtxs[i] = null;
-      }
+// Functions needed by modules
+window.saveCurrentSession = function() {
+  if (currentSessionId) {
+    const buf = term.buffer.active;
+    let lines = [];
+    for (let i = 0; i < buf.length; i++) {
+      const line = buf.getLine(i);
+      if (line) lines.push(line.translateToString(true));
     }
-    // Highlight active
-    cell.classList.toggle('active', hasSession && sessionList[i]?.id === currentSessionId);
+    while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+    sessionCache[currentSessionId] = lines.join('\r\n');
   }
-}
+};
+window.toggleView = function() {
+  if (GT.office && GT.office.toggleView) GT.office.toggleView();
+};
 
-// Click handler — switch session from header (no toggleView needed)
-function ghostCellClick(idx) {
-  vibrate();
-  if (idx < sessionList.length && !sessionList[idx].exited) {
-    const id = sessionList[idx].id;
-    // If in office view, always switch back to terminal
-    if (officeActive) toggleView();
-    if (id === currentSessionId) return;
-    // Switch session
-    bufferSeqs[id] = 0;
-    socket.emit('attach', id);
-    term.reset();
-    autoScroll = true;
-  } else if (sessionList.length < 4) {
-    createNewSession();
-  }
-}
+</script>
+<!-- Ghost Cells & Office modules (from P2P version) -->
+<script src="/js/ghost-cells.js?v=1"></script>
+<script src="/js/office.js?v=1"></script>
+<script>
+// ==================== Init Modules ====================
+if (GT.ghostCells) GT.ghostCells.init();
+if (GT.office) GT.office.init();
 
-// Animation loop for ghost cells — also runs checkIdle!
-function animateGhostCells() {
-  gcFrame++;
-  if (gcFrame % 30 === 0) checkIdle(); // Check every ~0.5s
-  for (let i = 0; i < 4; i++) {
-    if (gcCtxs[i]) drawGhostCell(i);
-  }
-  gcAnimId = requestAnimationFrame(animateGhostCells);
-}
-animateGhostCells();
+// Sync office refs from ghost-cells
+if (GT._syncOfficeRefs) GT._syncOfficeRefs();
 
-// Hook into session updates
-const origSessionHandler = socket.listeners('sessions')[0];
-socket.off('sessions', origSessionHandler);
+// Wire socket events to ghost cells
+socket.off('sessions');
 socket.on('sessions', (list) => {
   sessionList = list;
+  const activeIds = new Set(list.map(s => s.id));
+  for (const cachedId in sessionCache) {
+    if (!activeIds.has(Number(cachedId)) && !activeIds.has(cachedId)) delete sessionCache[cachedId];
+  }
   list.forEach((s, i) => {
     const termIdx = i + 1;
     if (termIdx <= 4 && termStates) {
       if (s.exited) termStates[termIdx] = 'error';
     }
   });
-  updateGhostCells();
+  if (list.length > 0 && !currentSessionId) {
+    const lastId = localStorage.getItem('ghostterm_last_session');
+    const lastSession = lastId && list.find(s => s.id === lastId && !s.exited);
+    if (lastSession) socket.emit('attach', lastSession.id);
+  }
+  if (GT.ghostCells) GT.ghostCells.updateGhostCells();
 });
 
-// Also update cells when attached changes
-const origAttachedHandler = socket.listeners('attached')[0];
-socket.off('attached', origAttachedHandler);
+socket.off('attached');
 socket.on('attached', (id) => {
   currentSessionId = id;
+  localStorage.setItem('ghostterm_last_session', id);
   socket.emit('sync', getSeq(id), id);
-  // Tell the new PTY our actual terminal size
   socket.emit('resize', { cols: term.cols, rows: term.rows });
-  updateGhostCells();
+  if (GT.ghostCells) GT.ghostCells.updateGhostCells();
+  const loadingEl = document.getElementById('session-loading');
+  if (loadingEl) loadingEl.classList.remove('visible');
 });
 
-// ==================== Chibi Office View ====================
-let officeActive = false;
-let officeAnimId = null;
-let officeFrame = 0;
-let officeW, officeH, officeDpr;
-let officeCanvas, officeCtx;
-// Mini terminal lines — will be fed from real output buffer
-const termLines = {
-  1: ['$ claude --dangerously-skip', '> Waiting for input...'],
-  2: ['$ npm start', '> Server running on :3777'],
+// Update ghost cells on output/delta/history
+const _origOutput = socket.listeners('output');
+socket.on('output', () => { if (GT.ghostCells) GT.ghostCells.updateGhostCells(); });
+socket.on('delta', () => { if (GT.ghostCells) GT.ghostCells.updateGhostCells(); });
+socket.on('history', () => { if (GT.ghostCells) GT.ghostCells.updateGhostCells(); });
+
+// Ghost cell click → switch session
+window.ghostCellClick = function(idx) {
+  if (GT.ghostCells && GT.ghostCells.ghostCellClick) {
+    GT.ghostCells.ghostCellClick(idx);
+  }
 };
-const MAX_MINI_LINES = 6;
-
-function toggleView() {
-  officeActive = !officeActive;
-  const termEl = document.getElementById('terminal-container');
-  const officeEl = document.getElementById('pixel-view');
-  const btn = document.getElementById('viewToggleBtn');
-
-  if (officeActive) {
-    termEl.style.display = 'none';
-    officeEl.style.display = 'block';
-    btn.classList.add('active');
-    initOffice();
-    startOfficeLoop();
-  } else {
-    termEl.style.display = '';
-    officeEl.style.display = 'none';
-    btn.classList.remove('active');
-    if (officeAnimId) cancelAnimationFrame(officeAnimId);
-    // Scroll to bottom — multiple delays to catch history that arrives late
-    setTimeout(() => term.scrollToBottom(), 50);
-    setTimeout(() => term.scrollToBottom(), 300);
-    setTimeout(() => term.scrollToBottom(), 800);
-  }
-}
-
-function initOffice() {
-  officeCanvas = document.getElementById('office-canvas');
-  officeCtx = officeCanvas.getContext('2d');
-  officeDpr = window.devicePixelRatio || 1;
-  const rect = officeCanvas.parentElement.getBoundingClientRect();
-  officeW = rect.width;
-  officeH = rect.height;
-  officeCanvas.width = officeW * officeDpr;
-  officeCanvas.height = officeH * officeDpr;
-  officeCanvas.style.width = officeW + 'px';
-  officeCanvas.style.height = officeH + 'px';
-  officeCtx.setTransform(officeDpr, 0, 0, officeDpr, 0, 0);
-}
-
-// ---- Drawing Helpers ----
-function oRoundRect(x, y, w, h, r) {
-  officeCtx.beginPath();
-  officeCtx.moveTo(x + r, y);
-  officeCtx.lineTo(x + w - r, y);
-  officeCtx.quadraticCurveTo(x + w, y, x + w, y + r);
-  officeCtx.lineTo(x + w, y + h - r);
-  officeCtx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  officeCtx.lineTo(x + r, y + h);
-  officeCtx.quadraticCurveTo(x, y + h, x, y + h - r);
-  officeCtx.lineTo(x, y + r);
-  officeCtx.quadraticCurveTo(x, y, x + r, y);
-  officeCtx.closePath();
-}
-function oFillRR(x, y, w, h, r, c) { officeCtx.fillStyle = c; oRoundRect(x, y, w, h, r); officeCtx.fill(); }
-function oCircle(cx, cy, r, c) { officeCtx.fillStyle = c; officeCtx.beginPath(); officeCtx.arc(cx, cy, r, 0, Math.PI * 2); officeCtx.fill(); }
-
-// ---- Office Background ----
-function drawOfficeBg() {
-  const c = officeCtx;
-  // Dark room
-  c.fillStyle = '#0f0f1a'; c.fillRect(0, 0, officeW, officeH);
-  // Floor
-  c.fillStyle = '#1a1a2e'; c.fillRect(0, officeH * 0.6, officeW, officeH * 0.4);
-  c.strokeStyle = '#2d2d50'; c.lineWidth = 1;
-  c.beginPath(); c.moveTo(0, officeH * 0.6); c.lineTo(officeW, officeH * 0.6); c.stroke();
-  // Floor grid (subtle)
-  c.strokeStyle = 'rgba(139,92,246,0.05)'; c.lineWidth = 0.5;
-  for (let i = 0; i < officeW; i += 30) { c.beginPath(); c.moveTo(i, officeH * 0.6); c.lineTo(i, officeH); c.stroke(); }
-  for (let i = officeH * 0.6; i < officeH; i += 20) { c.beginPath(); c.moveTo(0, i); c.lineTo(officeW, i); c.stroke(); }
-
-  // Stars / particles in background
-  c.fillStyle = '#4a4a7a';
-  for (let i = 0; i < 15; i++) {
-    const sx = (Math.sin(i * 7.3 + officeFrame * 0.003) * 0.5 + 0.5) * officeW;
-    const sy = (Math.cos(i * 4.1 + officeFrame * 0.005) * 0.5 + 0.5) * officeH * 0.55;
-    const sr = 1 + Math.sin(officeFrame * 0.02 + i) * 0.5;
-    oCircle(sx, sy, sr, `rgba(139,92,246,${0.15 + Math.sin(officeFrame * 0.03 + i) * 0.1})`);
-  }
-}
-
-// ---- Desk & Monitor ----
-function drawDesk(x, y, w, h) {
-  officeCtx.fillStyle = 'rgba(0,0,0,0.15)'; officeCtx.fillRect(x + 3, y + h - 2, w, 6);
-  oFillRR(x, y, w, h, 3, '#5c3d1e'); oFillRR(x, y, w, h * 0.3, 3, '#7a5230');
-  officeCtx.fillStyle = '#5c3d1e'; officeCtx.fillRect(x + 4, y + h, 4, 12); officeCtx.fillRect(x + w - 8, y + h, 4, 12);
-}
-
-function drawMonitor(x, y, w, h, state, lines) {
-  const c = officeCtx;
-  oFillRR(x, y, w, h, 4, '#334155'); oFillRR(x + 3, y + 3, w - 6, h - 8, 2, '#0a0a15');
-  c.fillStyle = '#475569'; c.fillRect(x + w/2 - 4, y + h, 8, 6); c.fillRect(x + w/2 - 8, y + h + 5, 16, 3);
-
-  const sx = x + 5, sy = y + 5, sw = w - 10, sh = h - 12;
-  c.save(); c.beginPath(); c.rect(sx, sy, sw, sh); c.clip();
-  if (state === 'error') { c.fillStyle = 'rgba(239,68,68,0.1)'; c.fillRect(sx, sy, sw, sh); }
-  const lineH = 7, maxL = Math.floor(sh / lineH), vis = lines.slice(-maxL);
-  c.font = '5px monospace'; c.textAlign = 'left';
-  vis.forEach((l, i) => { c.fillStyle = state === 'error' ? '#ef4444' : '#10b981'; c.fillText(l, sx + 2, sy + 6 + i * lineH); });
-  if (state === 'waiting' && Math.sin(officeFrame * 0.15) > 0) { c.fillStyle = '#10b981'; c.fillRect(sx + 2, sy + 6 + vis.length * lineH - 4, 4, 6); }
-  if (state === 'busy' && officeFrame % 4 === 0) {
-    c.fillStyle = '#10b981'; const chars = '{}[]<>=;:./\\|@#$%&*+-_~^'; let rl = '';
-    for (let j = 0; j < 12; j++) rl += chars[Math.floor(Math.random() * chars.length)];
-    const sl = sy + 6 + vis.length * lineH; if (sl < sy + sh) c.fillText(rl, sx + 2, sl);
-  }
-  c.restore();
-}
-
-// ---- Ghost Character ----
-function drawGhost(cx, cy, s, state, color, label, ghostIdx, deskCenter) {
-  const c = officeCtx;
-  // Float animation
-  const float = state === 'busy'
-    ? Math.sin(officeFrame * 0.2 + ghostIdx) * 4
-    : Math.sin(officeFrame * 0.05 + ghostIdx * 2) * 3;
-  const gy = cy + float;
-
-  // Shadow
-  c.globalAlpha = 0.2;
-  c.fillStyle = '#000';
-  c.beginPath();
-  c.ellipse(cx, cy + 28 * s, 16 * s, 5 * s, 0, 0, Math.PI * 2);
-  c.fill();
-  c.globalAlpha = 1;
-
-  // Glow when busy
-  if (state === 'busy') {
-    c.globalAlpha = 0.15 + Math.sin(officeFrame * 0.1) * 0.1;
-    oCircle(cx, gy, 28 * s, color);
-    c.globalAlpha = 1;
-  }
-
-  // Ghost body — rounded top, wavy bottom
-  c.fillStyle = color;
-  c.beginPath();
-  // Top dome
-  c.arc(cx, gy - 4 * s, 18 * s, Math.PI, 0);
-  // Right side down
-  c.lineTo(cx + 18 * s, gy + 16 * s);
-  // Wavy bottom (3 waves)
-  const waveAmp = 4 * s;
-  const waveW = 12 * s;
-  const wavePhase = officeFrame * 0.08 + ghostIdx;
-  for (let i = 0; i < 3; i++) {
-    const wx = cx + 18 * s - (i + 1) * waveW;
-    const wy = gy + 16 * s + Math.sin(wavePhase + i * 1.5) * waveAmp;
-    const wx2 = wx - waveW / 2;
-    c.quadraticCurveTo(wx + waveW * 0.25, wy + waveAmp, wx - waveW * 0.25, wy);
-  }
-  c.lineTo(cx - 18 * s, gy - 4 * s);
-  c.closePath();
-  c.fill();
-
-  // Inner highlight
-  c.globalAlpha = 0.15;
-  c.fillStyle = '#fff';
-  c.beginPath();
-  c.arc(cx - 4 * s, gy - 10 * s, 10 * s, 0, Math.PI * 2);
-  c.fill();
-  c.globalAlpha = 1;
-
-  // Eyes
-  if (state === 'idle') {
-    // Sleeping — closed eyes
-    c.strokeStyle = '#1e293b'; c.lineWidth = 2;
-    c.beginPath(); c.arc(cx - 6 * s, gy - 4 * s, 3 * s, 0, Math.PI); c.stroke();
-    c.beginPath(); c.arc(cx + 6 * s, gy - 4 * s, 3 * s, 0, Math.PI); c.stroke();
-    // Zzz
-    c.fillStyle = '#94a3b8'; c.textAlign = 'left';
-    const zo = Math.sin(officeFrame * 0.08) * 3;
-    c.globalAlpha = 0.5 + Math.sin(officeFrame * 0.1) * 0.3;
-    c.font = `bold ${8 * s}px sans-serif`; c.fillText('z', cx + 18 * s, gy - 16 * s + zo);
-    c.font = `bold ${11 * s}px sans-serif`; c.fillText('Z', cx + 24 * s, gy - 24 * s + zo);
-    c.globalAlpha = 1;
-  } else {
-    // Open eyes — big white circles with pupils
-    const eyeR = state === 'waiting' ? 5 * s : 4.5 * s;
-    oCircle(cx - 6 * s, gy - 5 * s, eyeR, '#fff');
-    oCircle(cx + 6 * s, gy - 5 * s, eyeR, '#fff');
-    // Pupils
-    const pupilOff = state === 'busy' ? Math.sin(officeFrame * 0.1) * 1.5 * s : 0;
-    oCircle(cx - 6 * s + pupilOff, gy - 4 * s, 2.2 * s, '#1e293b');
-    oCircle(cx + 6 * s + pupilOff, gy - 4 * s, 2.2 * s, '#1e293b');
-    // Eye shine
-    oCircle(cx - 5 * s, gy - 6 * s, 1 * s, '#fff');
-    oCircle(cx + 7 * s, gy - 6 * s, 1 * s, '#fff');
-  }
-
-  // Arms — thin lines reaching toward desk when busy
-  if ((state === 'busy' || state === 'error') && deskCenter) {
-    const armWiggle = state === 'busy' ? Math.sin(officeFrame * 0.3 + ghostIdx) * 1.5 : 0;
-    const dx = deskCenter.x - cx, dy = deskCenter.y - cy;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const nx = dx / dist, ny = dy / dist;
-    c.strokeStyle = color; c.lineWidth = 1.5; c.lineCap = 'round';
-    // Arm 1
-    c.beginPath();
-    c.moveTo(cx + nx * 12 * s, gy + ny * 6 * s);
-    c.quadraticCurveTo(cx + nx * 22 * s, gy + ny * 10 * s + armWiggle, cx + nx * 30 * s, gy + ny * 14 * s + armWiggle);
-    c.stroke();
-    // Arm 2
-    c.beginPath();
-    c.moveTo(cx + nx * 10 * s, gy + ny * 9 * s);
-    c.quadraticCurveTo(cx + nx * 20 * s, gy + ny * 14 * s - armWiggle, cx + nx * 28 * s, gy + ny * 18 * s - armWiggle);
-    c.stroke();
-    // Tiny fingertips
-    oCircle(cx + nx * 30 * s, gy + ny * 14 * s + armWiggle, 1.2, color);
-    oCircle(cx + nx * 28 * s, gy + ny * 18 * s - armWiggle, 1.2, color);
-  }
-
-  // Mouth
-  if (state === 'busy') {
-    // Determined line mouth
-    c.strokeStyle = '#1e293b'; c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(cx - 3 * s, gy + 2 * s); c.lineTo(cx + 3 * s, gy + 2 * s); c.stroke();
-  } else if (state === 'error') {
-    // Wavy worried mouth
-    c.strokeStyle = '#1e293b'; c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(cx - 4 * s, gy + 3 * s);
-    c.quadraticCurveTo(cx - 2 * s, gy + 1 * s, cx, gy + 3 * s);
-    c.quadraticCurveTo(cx + 2 * s, gy + 5 * s, cx + 4 * s, gy + 3 * s);
-    c.stroke();
-  } else if (state === 'waiting') {
-    // Small O mouth
-    oCircle(cx, gy + 2 * s, 2.5 * s, '#1e293b');
-    oCircle(cx, gy + 2 * s, 1.5 * s, color);
-  } else {
-    // Gentle smile
-    c.strokeStyle = '#1e293b'; c.lineWidth = 1.5;
-    c.beginPath(); c.arc(cx, gy + 1 * s, 3 * s, 0.1, Math.PI - 0.1); c.stroke();
-  }
-
-  // Blush
-  c.globalAlpha = 0.3;
-  oCircle(cx - 12 * s, gy, 3 * s, '#fca5a5');
-  oCircle(cx + 12 * s, gy, 3 * s, '#fca5a5');
-  c.globalAlpha = 1;
-
-  // State indicators
-  if (state === 'error') {
-    // Red exclamation
-    c.fillStyle = '#ef4444'; c.font = `bold ${14 * s}px sans-serif`; c.textAlign = 'center';
-    c.fillText('!', cx, gy - 26 * s + Math.sin(officeFrame * 0.15) * 2);
-  }
-  if (state === 'waiting') {
-    // Yellow question mark
-    c.fillStyle = '#f59e0b'; c.font = `bold ${14 * s}px sans-serif`; c.textAlign = 'center';
-    c.fillText('?', cx, gy - 26 * s + Math.sin(officeFrame * 0.08) * 3);
-  }
-  if (state === 'busy') {
-    // Sparkles
-    const sp = officeFrame * 0.12 + ghostIdx;
-    c.fillStyle = '#7dd3fc';
-    for (let i = 0; i < 3; i++) {
-      const angle = sp + i * 2.1;
-      const dist = (14 + Math.sin(sp + i) * 4) * s;
-      const spx = cx + Math.cos(angle) * dist;
-      const spy = gy - 10 * s + Math.sin(angle) * dist * 0.6;
-      const spSize = (1.5 + Math.sin(officeFrame * 0.2 + i) * 0.8) * s;
-      // 4-point star
-      c.beginPath();
-      c.moveTo(spx, spy - spSize); c.lineTo(spx + spSize * 0.3, spy);
-      c.lineTo(spx, spy + spSize); c.lineTo(spx - spSize * 0.3, spy);
-      c.closePath(); c.fill();
-    }
-  }
-
-  // Label
-  c.fillStyle = '#94a3b8'; c.font = `${9 * s}px sans-serif`; c.textAlign = 'center';
-  c.fillText(label, cx, cy + 34 * s);
-}
-
-// ---- Detect terminal state from output (multi-session) ----
-const promptPattern = /[$>❯]\s*$/m;
-const errorPattern = /error|Error|FAIL|ECONNREFUSED|ENOENT|panic/;
-const lastRealOutputTimes = {};
-const outputByteCounts = {}; // Track bytes per second to detect sustained output
-
-function updateOfficeOutput(data, sessionId) {
-  // Map session ID to position (1-based) in sessionList
-  const posIdx = sessionList.findIndex(s => s.id === sessionId);
-  if (posIdx < 0) return; // Session not in list yet, skip
-  const idx = posIdx + 1;
-  if (idx > 4) return; // Track up to 4 sessions
-
-  const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '').replace(/\r/g, '');
-  const visible = clean.replace(/\s/g, '');
-
-  // Track output volume — only sustained output = busy
-  if (visible.length > 0) {
-    lastRealOutputTimes[idx] = Date.now();
-    outputByteCounts[idx] = (outputByteCounts[idx] || 0) + visible.length;
-    // Decay byte count over time (reset every 2s via checkIdle)
-  }
-
-  // Always check prompt pattern first (even tiny output like "> ")
-  if (promptPattern.test(clean)) {
-    termStates[idx] = 'waiting';
-    outputByteCounts[idx] = 0; // Reset — prompt means done
-  } else if (errorPattern.test(clean)) {
-    termStates[idx] = 'error';
-  } else if (outputByteCounts[idx] > 50) {
-    // Only set busy after sustained output (>50 chars accumulated)
-    termStates[idx] = 'busy';
-  }
-
-  // Update mini terminal lines
-  if (visible.length > 0) {
-    const newLines = clean.split('\n').filter(l => l.trim());
-    if (newLines.length) {
-      if (!termLines[idx]) termLines[idx] = [];
-      termLines[idx].push(...newLines);
-      if (termLines[idx].length > MAX_MINI_LINES) termLines[idx] = termLines[idx].slice(-MAX_MINI_LINES);
-    }
-  }
-}
-
-function checkIdle() {
-  const now = Date.now();
-  [1, 2, 3, 4].forEach(idx => {
-    const elapsed = now - (lastRealOutputTimes[idx] || 0);
-    const hasSession = idx <= sessionList.length;
-    // Decay byte counts — if no output for 2s, reset
-    if (elapsed > 2000) outputByteCounts[idx] = 0;
-    if (!hasSession) {
-      termStates[idx] = 'idle';
-      return;
-    }
-    if (termStates[idx] === 'busy' && elapsed > 3000) {
-      termStates[idx] = 'waiting'; // Done working → waiting for input
-    }
-    if (termStates[idx] === 'waiting' && elapsed > 10000) {
-      termStates[idx] = 'idle'; // Long idle → go sleep on sofa
-    }
-    if (termStates[idx] === 'error' && elapsed > 5000) {
-      termStates[idx] = 'waiting'; // Error clears after 5s
-    }
-  });
-}
-
-// ---- Main Loop ----
-function startOfficeLoop() {
-  function loop() {
-    if (!officeActive) return;
-    officeFrame++;
-    checkIdle();
-    officeCtx.clearRect(0, 0, officeW, officeH);
-    drawOfficeBg();
-
-    const charScale = Math.min(officeW / 400, officeH / 500) * 1.1;
-
-    // 4 Desks in 4 corners
-    const deskW = officeW * 0.18, deskH = 10;
-    const monW = officeW * 0.13, monH = officeH * 0.08;
-    const deskPositions = [
-      { x: officeW * 0.04, y: officeH * 0.14 },  // top-left
-      { x: officeW * 0.78, y: officeH * 0.14 },  // top-right
-      { x: officeW * 0.04, y: officeH * 0.58 },  // bottom-left
-      { x: officeW * 0.78, y: officeH * 0.58 },  // bottom-right
-    ];
-
-    // Sofa area (center) — 4 spots clustered together
-    const sofaCenterX = officeW * 0.5, sofaCenterY = officeH * 0.36;
-    const sofaPositions = [
-      { x: sofaCenterX - 35, y: sofaCenterY - 15 },
-      { x: sofaCenterX + 35, y: sofaCenterY - 15 },
-      { x: sofaCenterX - 35, y: sofaCenterY + 20 },
-      { x: sofaCenterX + 35, y: sofaCenterY + 20 },
-    ];
-
-    // Draw pumpkin sofas in center
-    for (let i = 0; i < 4; i++) {
-      const sp = sofaPositions[i];
-      officeCtx.fillStyle = '#c2410c';
-      officeCtx.beginPath(); officeCtx.ellipse(sp.x, sp.y, 22, 8, 0, 0, Math.PI * 2); officeCtx.fill();
-      officeCtx.strokeStyle = '#9a3412'; officeCtx.lineWidth = 0.8;
-      officeCtx.beginPath(); officeCtx.moveTo(sp.x, sp.y - 8); officeCtx.lineTo(sp.x, sp.y + 8); officeCtx.stroke();
-      officeCtx.beginPath(); officeCtx.moveTo(sp.x - 8, sp.y - 7); officeCtx.quadraticCurveTo(sp.x - 8, sp.y, sp.x - 8, sp.y + 7); officeCtx.stroke();
-      officeCtx.beginPath(); officeCtx.moveTo(sp.x + 8, sp.y - 7); officeCtx.quadraticCurveTo(sp.x + 8, sp.y, sp.x + 8, sp.y + 7); officeCtx.stroke();
-      officeCtx.fillStyle = '#65a30d';
-      officeCtx.fillRect(sp.x - 1.5, sp.y - 11, 3, 4);
-      officeCtx.beginPath(); officeCtx.ellipse(sp.x + 3, sp.y - 10, 3, 1.5, 0.3, 0, Math.PI * 2); officeCtx.fill();
-    }
-
-    const ghostColors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
-
-    // Draw desks (always) + ghosts (only if session exists)
-    for (let i = 0; i < 4; i++) {
-      const dp = deskPositions[i];
-      const tIdx = i + 1;
-      const hasSession = i < sessionList.length && !sessionList[i]?.exited;
-      const state = termStates[tIdx] || 'idle';
-
-      // Always draw desk + monitor
-      drawDesk(dp.x, dp.y, deskW, deskH);
-      drawMonitor(dp.x + 3, dp.y - monH - 2, monW, monH, state, termLines[tIdx] || []);
-
-      // Only draw ghost if session exists
-      if (!hasSession) continue;
-
-      // Ghost position depends on state — at desk (corner) or sofa (center)
-      const sp = sofaPositions[i];
-      let gx, gy;
-      const floatY = Math.sin(officeFrame * 0.05 + i * 1.5) * 3;
-
-      // Ghost work position: always toward center from desk corner
-      // Top-left(0): right-below, Top-right(1): left-below
-      // Bottom-left(2): right-above, Bottom-right(3): left-above
-      const workOffsets = [
-        { dx: deskW + 20, dy: deskH + 15 },   // 0: top-left → right-below
-        { dx: -20, dy: deskH + 15 },           // 1: top-right → left-below
-        { dx: deskW + 20, dy: -monH - 25 },    // 2: bottom-left → right-above
-        { dx: -20, dy: -monH - 25 },            // 3: bottom-right → left-above
-      ];
-
-      if (state === 'busy') {
-        gx = dp.x + workOffsets[i].dx;
-        gy = dp.y + workOffsets[i].dy + Math.sin(officeFrame * 0.2 + i) * 2;
-      } else if (state === 'error') {
-        gx = dp.x + workOffsets[i].dx;
-        gy = dp.y + workOffsets[i].dy + Math.sin(officeFrame * 0.3) * 3;
-      } else if (state === 'waiting') {
-        // Between sofa and desk
-        gx = (sp.x + dp.x + deskW / 2) / 2;
-        gy = (sp.y + dp.y - monH - 20) / 2 + floatY;
-      } else {
-        // Idle — on sofa
-        gx = sp.x;
-        gy = sp.y - 8 + floatY;
-      }
-
-      const label = 'Terminal ' + tIdx;
-      const deskCenter = { x: dp.x + deskW / 2, y: dp.y - monH / 2 };
-      drawGhost(gx, gy, charScale, state, ghostColors[i], label, i, deskCenter);
-    }
-
-    officeAnimId = requestAnimationFrame(loop);
-  }
-  loop();
-}
-
-// Tap character to switch terminal / create new session
-document.getElementById('pixel-view').addEventListener('click', (e) => {
-  if (!officeActive) return;
-  const rect = officeCanvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-
-  // Check tap on desk corners (always clickable) or ghost positions
-  const deskCenters = [
-    { x: officeW * 0.04 + officeW * 0.09, y: officeH * 0.14 },
-    { x: officeW * 0.78 + officeW * 0.09, y: officeH * 0.14 },
-    { x: officeW * 0.04 + officeW * 0.09, y: officeH * 0.58 },
-    { x: officeW * 0.78 + officeW * 0.09, y: officeH * 0.58 },
-  ];
-  const sofaCenterX = officeW * 0.5, sofaCenterY = officeH * 0.36;
-  const sofas = [
-    { x: sofaCenterX - 35, y: sofaCenterY - 15 },
-    { x: sofaCenterX + 35, y: sofaCenterY - 15 },
-    { x: sofaCenterX - 35, y: sofaCenterY + 20 },
-    { x: sofaCenterX + 35, y: sofaCenterY + 20 },
-  ];
-
-  for (let i = 0; i < 4; i++) {
-    // Check if tap is near desk or sofa for this slot
-    const nearDesk = Math.hypot(x - deskCenters[i].x, y - deskCenters[i].y) < 60;
-    const nearSofa = Math.hypot(x - sofas[i].x, y - sofas[i].y) < 50;
-    if (nearDesk || nearSofa) {
-      if (i < sessionList.length && !sessionList[i].exited) {
-        switchSession(sessionList[i].id);
-        showToast('Terminal ' + (i + 1));
-      } else if (sessionList.length < 4) {
-        createNewSession();
-        showToast('Creating Terminal ' + (sessionList.length + 1) + '...');
-        setTimeout(() => toggleView(), 300);
-      }
-      vibrate();
-      break;
-    }
-  }
-});
 
 // ==================== PWA ====================
 if ('serviceWorker' in navigator) {
