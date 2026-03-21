@@ -626,6 +626,7 @@
       <button class="qbtn" onclick="send('\x1b[Z')">S+Tab</button>
       <button class="qbtn" onclick="send('/')">/ cmd</button>
       <button class="qbtn" onclick="showNumPad()">12345x</button>
+      <button class="qbtn" onclick="send('use /simplify to check if the plan is sound\r')" style="font-size:9px;color:var(--warning)">/simplify</button>
       <button class="qbtn" id="bkspBtn">←Bksp</button>
     </div>
 
@@ -805,10 +806,10 @@ let sessionList = [];
 function getSeq(id) { return bufferSeqs[id || currentSessionId] || 0; }
 function setSeq(id, seq) { bufferSeqs[id || currentSessionId] = seq; }
 
+let needsReattach = true;
 socket.on('connect', () => {
   document.getElementById('statusDot').classList.add('connected');
-  // statusText removed — ghost cells show status now
-  // Server sends 'sessions' + 'attached' → then we sync
+  needsReattach = true;
   if (hasConnectedOnce) {
     socket.emit('resize', { cols: term.cols, rows: term.rows });
   }
@@ -823,6 +824,7 @@ socket.on('disconnect', () => {
 // Server tells us which session we're attached to
 socket.on('attached', (id) => {
   currentSessionId = id;
+  localStorage.setItem('ghostterm_last_session', id);
   // ghost cells show which session is active
   socket.emit('sync', getSeq(id), id);
 });
@@ -837,6 +839,12 @@ socket.on('sessions', (list) => {
       if (s.exited) termStates[termIdx] = 'error';
     }
   });
+  // After connect/reconnect, attach to the session we were on (or first available)
+  if (needsReattach && list.length > 0) {
+    needsReattach = false;
+    const target = currentSessionId && list.find(s => s.id === currentSessionId && !s.exited);
+    socket.emit('attach', target ? target.id : list[0].id);
+  }
 });
 
 // Output from current session
@@ -944,11 +952,20 @@ function closeCurrentSession() {
 }
 
 // Reconnect on iOS foreground
+let _hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    if (!socket.connected) {
+  if (document.visibilityState === 'hidden') {
+    _hiddenAt = Date.now();
+  } else if (document.visibilityState === 'visible') {
+    const away = Date.now() - _hiddenAt;
+    if (!socket.connected || away > 5000) {
+      // After 5s+ away, socket.connected can lie (TCP dead but
+      // Socket.IO hasn't detected it). Force fresh reconnect.
+      needsReattach = true;
+      socket.disconnect();
       socket.connect();
     } else {
+      // Quick tab-switch — connection likely still alive
       socket.emit('sync', getSeq(currentSessionId), currentSessionId);
     }
   }
@@ -1649,10 +1666,17 @@ socket.on('sessions', (list) => {
       if (s.exited) termStates[termIdx] = 'error';
     }
   });
-  if (list.length > 0 && !currentSessionId) {
-    const lastId = localStorage.getItem('ghostterm_last_session');
-    const lastSession = lastId && list.find(s => s.id === lastId && !s.exited);
-    if (lastSession) socket.emit('attach', lastSession.id);
+  // After connect/reconnect, always re-attach so server knows which session this socket belongs to
+  if (needsReattach && list.length > 0) {
+    needsReattach = false;
+    const target = currentSessionId && list.find(s => s.id === currentSessionId && !s.exited);
+    if (!target && !currentSessionId) {
+      const lastId = localStorage.getItem('ghostterm_last_session');
+      const lastSession = lastId && list.find(s => s.id == lastId && !s.exited);
+      socket.emit('attach', lastSession ? lastSession.id : list[0].id);
+    } else {
+      socket.emit('attach', target ? target.id : list[0].id);
+    }
   }
   if (GT.ghostCells) GT.ghostCells.updateGhostCells();
 });

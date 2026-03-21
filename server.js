@@ -183,11 +183,8 @@ io.on('connection', (socket) => {
     return true;
   }
 
-  // Auto-attach to first session
-  const firstSession = sessions.values().next().value;
-  if (firstSession) {
-    attachToSession(firstSession.id);
-  }
+  // Don't auto-attach — let client decide via 'attach' event
+  // Client picks its last session (or first) after receiving 'sessions' list
 
   // Client requests to switch session
   socket.on('attach', (id) => {
