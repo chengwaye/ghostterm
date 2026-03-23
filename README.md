@@ -1,5 +1,7 @@
 # GhostTerm
 
+[繁體中文](README.zh-TW.md)
+
 Control [Claude Code](https://docs.anthropic.com/en/docs/claude-code) from your phone. A mobile-optimized web terminal that connects to your PC over [Tailscale](https://tailscale.com/).
 
 No cloud relay, no port forwarding, no account needed. Your terminal stays on your machine — your phone just drives it.
