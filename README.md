@@ -114,6 +114,8 @@ Scan the QR code with your phone, or type the Mobile URL into your phone's brows
 |----------|---------|-------------|
 | `PORT` | `3777` | Server port |
 | `ACCESS_CODE` | _(none)_ | Optional passcode to protect access |
+| `CWD` | `~` (home dir) | Terminal starting directory |
+| `UPLOAD_DIR` | `~/claude-uploads` | Where uploaded files are saved |
 
 ```bash
 ACCESS_CODE=mysecret npm start

@@ -114,6 +114,8 @@ Scan with your phone:
 |---------|--------|------|
 | `PORT` | `3777` | 伺服器 port |
 | `ACCESS_CODE` | （無） | 連線密碼，選填 |
+| `CWD` | `~`（家目錄） | 終端機起始路徑 |
+| `UPLOAD_DIR` | `~/claude-uploads` | 手機上傳的檔案存放位置 |
 
 ```bash
 ACCESS_CODE=mysecret npm start

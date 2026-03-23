@@ -28,7 +28,7 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3777;
-const UPLOAD_DIR = path.join(os.homedir(), 'Desktop', 'claude-uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(os.homedir(), 'claude-uploads');
 const ACCESS_CODE = process.env.ACCESS_CODE || '';
 const MAX_SESSIONS = 4;
 
@@ -101,7 +101,7 @@ function createSession(id) {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
-    cwd: path.join(os.homedir(), 'Desktop'),
+    cwd: process.env.CWD || os.homedir(),
     env: (() => { const e = { ...process.env, TERM: 'xterm-256color' }; delete e.CLAUDECODE; delete e.CLAUDE_CODE; return e; })(),
   });
 
