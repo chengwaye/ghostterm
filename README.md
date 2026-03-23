@@ -29,7 +29,7 @@ Claude Code is a CLI tool. If you're away from your desk — on the couch, in be
 - **iOS keyboard handling** — solved all the Safari viewport quirks so the keyboard just works
 
 <p align="center">
-  <img src="screenshots/ghost-party.jpg" width="400" alt="Ghost party celebration">
+  <img src="screenshots/ghost-celebrate.jpg" width="400" alt="Ghost party celebration">
 </p>
 
 ## Prerequisites
