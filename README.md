@@ -68,8 +68,7 @@ That's it. Your phone and PC are now on the same private network.
 ## Setup
 
 ```bash
-git clone https://github.com/chengwaye/ghostterm.git
-cd ghostterm && npm install && npm start
+git clone https://github.com/chengwaye/ghostterm.git && cd ghostterm && npm install && npm start
 ```
 
 On startup you'll see:
