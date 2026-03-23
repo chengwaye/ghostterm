@@ -38,7 +38,11 @@ Claude Code is a CLI tool. If you're away from your desk — on the couch, in be
 
 1. **[Tailscale](https://tailscale.com/)** on both your PC and phone (free for personal use)
 2. **Node.js** 18+ on your PC
-3. **Claude Code** on your PC (`npm install -g @anthropic-ai/claude-code`)
+3. **C++ build tools** (needed by `node-pty` to compile)
+   - Windows: install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with "Desktop development with C++"
+   - macOS: `xcode-select --install`
+   - Linux: `sudo apt install build-essential` (Debian/Ubuntu)
+4. **Claude Code** on your PC (`npm install -g @anthropic-ai/claude-code`)
 
 ## Tailscale setup (if you haven't used it before)
 

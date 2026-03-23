@@ -1,5 +1,5 @@
 {
-  "name": "claude-remote",
+  "name": "ghostterm",
   "version": "1.0.0",
   "description": "Remote control Claude Code from your phone",
   "main": "server.js",

@@ -11,7 +11,12 @@ try {
   pty = require('node-pty');
 } catch (e) {
   console.error('node-pty failed to load:', e.message);
-  console.error('Run: npm install --global windows-build-tools');
+  console.error('');
+  console.error('node-pty requires C++ build tools:');
+  console.error('  Windows: npm install --global windows-build-tools');
+  console.error('           or install "Desktop development with C++" from Visual Studio Installer');
+  console.error('  macOS:   xcode-select --install');
+  console.error('  Linux:   sudo apt install build-essential (Debian/Ubuntu)');
   process.exit(1);
 }
 
