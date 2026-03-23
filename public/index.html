@@ -626,7 +626,8 @@
       <button class="qbtn" onclick="send('\x1b[Z')">S+Tab</button>
       <button class="qbtn" onclick="send('/')">/ cmd</button>
       <button class="qbtn" onclick="showNumPad()">12345x</button>
-      <button class="qbtn" onclick="send('use /simplify to check if the plan is sound\r')" style="font-size:9px;color:var(--warning)">/simplify</button>
+      <button class="qbtn" onclick="send('/btw ')" style="font-size:10px;color:#60a5fa;flex:0 0 38px;min-width:0">/btw</button>
+      <button class="qbtn" onclick="send('use /simplify to check if the plan is sound\r')" style="font-size:8px;color:var(--warning);flex:0 0 46px;min-width:0">simpfy</button>
       <button class="qbtn" id="bkspBtn">←Bksp</button>
     </div>
 
@@ -1444,7 +1445,7 @@ hiddenInput.addEventListener('touchstart', (e) => {
 function syncViewport() {
   const vv = window.visualViewport;
   if (!vv || !keyboardOpen) return;
-  inputBar.style.bottom = (lockedHeight - vv.height) + 'px';
+  inputBar.style.bottom = (lockedHeight - vv.height - vv.offsetTop) + 'px';
 }
 
 hiddenInput.addEventListener('focus', () => {
